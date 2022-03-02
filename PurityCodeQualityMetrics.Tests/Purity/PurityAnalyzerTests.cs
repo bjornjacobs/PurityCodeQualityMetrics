@@ -10,8 +10,6 @@ public class PurityAnalyzerTests
     [Fact]
     public void AnalyzePurity_Pure()
     {
-        var analyzer = new PurityAnalyzer(@"");
-        var result = analyzer.Analyze();
-        var d = result.GetMethodByName("method");
+        var analyzer = new PurityAnalyzer();
     }
 }

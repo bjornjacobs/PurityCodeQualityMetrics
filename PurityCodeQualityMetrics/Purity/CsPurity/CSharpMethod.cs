@@ -3,9 +3,9 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace PurityCodeQualityMetrics.Purity;
+namespace PurityCodeQualityMetrics.Purity.CsPurity;
 
-public class Method
+public class CSharpMethod
 {
     public string Identifier;
     public MethodDeclarationSyntax Declaration;
@@ -26,7 +26,7 @@ public class Method
     ///
     /// <param name="methodInvocation"></param>
     /// <param name="model"></param>
-    public Method(InvocationExpressionSyntax methodInvocation, SemanticModel model)
+    public CSharpMethod(InvocationExpressionSyntax methodInvocation, SemanticModel model)
     {
         ISymbol symbol = ModelExtensions.GetSymbolInfo(model, methodInvocation).Symbol;
         if (symbol == null)
@@ -81,13 +81,13 @@ public class Method
         }
     }
 
-    public Method(MethodDeclarationSyntax declaration)
+    public CSharpMethod(MethodDeclarationSyntax declaration)
         : this(declaration.Identifier.Text)
     {
         Declaration = declaration;
     }
 
-    public Method(string identifier)
+    public CSharpMethod(string identifier)
     {
         Identifier = identifier;
     }
@@ -108,9 +108,9 @@ public class Method
         return Declaration?.SyntaxTree.GetRoot();
     }
 
-    public bool HasEqualSyntaxTreeTo(Method method)
+    public bool HasEqualSyntaxTreeTo(CSharpMethod cSharpMethod)
     {
-        return GetRoot().Equals(method.GetRoot());
+        return GetRoot().Equals(cSharpMethod.GetRoot());
     }
 
     /// <summary>
@@ -156,11 +156,8 @@ public class Method
 
     bool ContainsUnsafeKeyword(IEnumerable<MemberDeclarationSyntax> nodes)
     {
-        return nodes.Where(n => n
-            .Modifiers
-            .Where(m => m.IsKind(SyntaxKind.UnsafeKeyword))
-            .Any()
-        ).Any();
+        return nodes.Any(n => 
+            n.Modifiers.Any(m => m.IsKind(SyntaxKind.UnsafeKeyword)));
     }
 
     /// <summary>
@@ -335,8 +332,8 @@ public class Method
 
     public override bool Equals(Object obj)
     {
-        if (!(obj is Method)) return false;
-        Method m = obj as Method;
+        if (!(obj is CSharpMethod)) return false;
+        CSharpMethod m = obj as CSharpMethod;
         if (HasKnownDeclaration() && m.HasKnownDeclaration())
         {
             return m.Declaration == Declaration;

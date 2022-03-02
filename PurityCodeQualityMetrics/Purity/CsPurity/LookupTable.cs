@@ -1,18 +1,17 @@
 ﻿using System.Data;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace PurityCodeQualityMetrics.Purity;
+namespace PurityCodeQualityMetrics.Purity.CsPurity;
 
 public static class Ext
 {
-    public static Method GetMethodByName(
+    public static CSharpMethod GetMethodByName(
         this LookupTable lookupTable,
         string name
     )
     {
-        foreach (var tree in lookupTable.trees)
+        foreach (var tree in lookupTable.Trees)
         {
             var methodDeclarations = tree
                 .GetRoot()
@@ -21,7 +20,7 @@ public static class Ext
                 .Where(m => m.Identifier.Text == name);
             if (methodDeclarations.Any())
             {
-                return new Method(methodDeclarations.Single());
+                return new CSharpMethod(methodDeclarations.Single());
             }
         }
 
@@ -31,16 +30,16 @@ public static class Ext
 
 public class LookupTable
 {
-    public DataTable table = new DataTable();
-    public WorkingSet workingSet;
-    public readonly IEnumerable<SyntaxTree> trees;
-    public bool verbose = false;
+    public readonly DataTable Table = new DataTable();
+    public readonly WorkingSet WorkingSet;
+    public readonly IEnumerable<SyntaxTree> Trees;
+    public bool Verbose = false;
 
     public LookupTable()
     {
-        table.Columns.Add("identifier", typeof(Method));
-        table.Columns.Add("dependencies", typeof(IEnumerable<Method>));
-        table.Columns.Add("purity", typeof(PurityValue));
+        Table.Columns.Add("identifier", typeof(CSharpMethod));
+        Table.Columns.Add("dependencies", typeof(IEnumerable<CSharpMethod>));
+        Table.Columns.Add("purity", typeof(PurityValue));
     }
     public LookupTable(SyntaxTree tree) : this(new List<SyntaxTree> { tree }) { }
 
@@ -50,23 +49,23 @@ public class LookupTable
 
     public LookupTable(IEnumerable<SyntaxTree> trees, bool verbose) : this()
     {
-        this.trees = trees;
+        Trees = trees;
 
         BuildLookupTable(verbose);
-        workingSet = new WorkingSet(this);
+        WorkingSet = new WorkingSet(this);
     }
     
 
     // Creates a LookupTable with the content of `table`
     public LookupTable(DataTable table, LookupTable lt)
     {
-        this.trees = lt.trees;
-        this.table = table.Copy();
+        this.Trees = lt.Trees;
+        this.Table = table.Copy();
     }
 
     public LookupTable Copy()
     {
-        return new LookupTable(table, this);
+        return new LookupTable(Table, this);
     }
 
     /// <summary>
@@ -79,30 +78,37 @@ public class LookupTable
     /// </summary>
     public void BuildLookupTable(bool verbose)
     {
-        foreach (var tree in trees)
+        foreach (var tree in Trees)
         {
             var methodDeclarations = tree
                 .GetRoot()
                 .DescendantNodes()
                 .OfType<MethodDeclarationSyntax>();
+            
+            var lambdaExpressions = tree
+                .GetRoot()
+                .DescendantNodes()
+                .OfType<SimpleLambdaExpressionSyntax>();
+            
+            
             foreach (var methodDeclaration in methodDeclarations)
             {
-                Method method = new Method(methodDeclaration);
+                CSharpMethod cSharpMethod = new CSharpMethod(methodDeclaration);
 
                 // Ignore interface methods which also show up as
                 // MethodDeclarationSyntaxes
-                if (!method.IsInterfaceMethod())
+                if (!cSharpMethod.IsInterfaceMethod())
                 {
                     if (verbose)
                     {
-                        Console.WriteLine($"Calculating dependencies for {method}.");
+                        Console.WriteLine($"Calculating dependencies for {cSharpMethod}.");
                     }
 
-                    var dependencies = CalculateDependencies(method);
-                    AddMethod(method);
+                    var dependencies = CalculateDependencies(cSharpMethod);
+                    AddMethod(cSharpMethod);
                     foreach (var dependency in dependencies)
                     {
-                        AddDependency(method, dependency);
+                        AddDependency(cSharpMethod, dependency);
                     }
                 }
             }
@@ -111,9 +117,9 @@ public class LookupTable
 
     // This method is private since dependencies get removed after
     // calculating purities. See method CalculateDependencies().
-    private IEnumerable<Method> GetDependencies(Method method)
+    private IEnumerable<CSharpMethod> GetDependencies(CSharpMethod cSharpMethod)
     {
-        return GetMethodRow(method).Field<IEnumerable<Method>>("dependencies");
+        return GetMethodRow(cSharpMethod).Field<IEnumerable<CSharpMethod>>("dependencies");
     }
 
     /// <summary>
@@ -123,55 +129,55 @@ public class LookupTable
     /// invoker's purity is set to `Unknown` since the invoked method could
     /// have any implementation.
     /// </summary>
-    /// <param name="method">The method</param>
+    /// <param name="cSharpMethod">The method</param>
     /// <returns>
-    /// A list of all unique Methods that <paramref name="method"/>
+    /// A list of all unique Methods that <paramref name="cSharpMethod"/>
     /// depends on.
     /// </returns>
-    public IEnumerable<Method> CalculateDependencies(Method method)
+    public IEnumerable<CSharpMethod> CalculateDependencies(CSharpMethod cSharpMethod)
     {
         // If the dependencies have already been computed, return them
-        if (HasMethod(method) && GetDependencies(method).Any())
+        if (HasMethod(cSharpMethod) && GetDependencies(cSharpMethod).Any())
         {
-            return GetDependencies(method);
+            return GetDependencies(cSharpMethod);
         }
 
-        Stack<Method> result = new Stack<Method>();
+        Stack<CSharpMethod> result = new Stack<CSharpMethod>();
         SemanticModel model = PurityAnalyzer.GetSemanticModel(
-            trees,
-            method.GetRoot().SyntaxTree
+            Trees,
+            cSharpMethod.GetRoot().SyntaxTree
         );
 
         // If the method doesn't have a known declaration we cannot
         // calculate its dependencies, and so we ignore it
-        if (!method.HasKnownDeclaration())
+        if (!cSharpMethod.HasKnownDeclaration())
         {
-            AddMethod(method);
-            SetPurity(method, PurityValue.Unknown);
+            AddMethod(cSharpMethod);
+            SetPurity(cSharpMethod, PurityValue.Unknown);
             return result;
         }
 
-        var methodInvocations = method
+        var methodInvocations = cSharpMethod
             .Declaration
             .DescendantNodes()
             .OfType<InvocationExpressionSyntax>();
         if (!methodInvocations.Any()) return result;
 
         model = PurityAnalyzer.GetSemanticModel(
-            trees,
-            method.GetRoot().SyntaxTree
+            Trees,
+            cSharpMethod.GetRoot().SyntaxTree
         );
 
         foreach (var invocation in methodInvocations.Distinct())
         {
-            Method invoked = new Method(invocation, model);
+            CSharpMethod invoked = new CSharpMethod(invocation, model);
 
             if (invoked.IsLocalFunction || invoked.IsDelegateFunction)
             {
                 // Excludes delegate and local functions
                 continue;
             }
-            else if (invoked.Equals(method))
+            else if (invoked.Equals(cSharpMethod))
             {
                 // Handles recursive calls. Don't continue analyzing
                 // invoked method if it is equal to the one being analyzed
@@ -186,30 +192,29 @@ public class LookupTable
     /// <summary>
     /// Adds a dependency for a method to the lookup table.
     /// </summary>
-    /// <param name="method">The method to add a dependency to</param>
+    /// <param name="cSharpMethod">The method to add a dependency to</param>
     /// <param name="dependsOnNode">The method that methodNode depends on</param>
-    public void AddDependency(Method method, Method dependsOnNode)
+    public void AddDependency(CSharpMethod cSharpMethod, CSharpMethod dependsOnNode)
     {
-        AddMethod(method);
+        AddMethod(cSharpMethod);
         AddMethod(dependsOnNode);
-        DataRow row = table
+        DataRow row = Table
             .AsEnumerable()
-            .Where(row => row["identifier"].Equals(method))
-            .Single();
-        List<Method> dependencies = row
-            .Field<List<Method>>("dependencies");
+            .Single(row => row["identifier"].Equals(cSharpMethod));
+        List<CSharpMethod> dependencies = row
+            .Field<List<CSharpMethod>>("dependencies");
         if (!dependencies.Contains(dependsOnNode))
         {
             dependencies.Add(dependsOnNode);
         }
     }
 
-    public void RemoveDependency(Method methodNode, Method dependsOnNode)
+    public void RemoveDependency(CSharpMethod cSharpMethodNode, CSharpMethod dependsOnNode)
     {
-        if (!HasMethod(methodNode))
+        if (!HasMethod(cSharpMethodNode))
         {
             throw new Exception(
-                $"Method '{methodNode}' does not exist in lookup table"
+                $"Method '{cSharpMethodNode}' does not exist in lookup table"
             );
         }
         else if (!HasMethod(dependsOnNode))
@@ -218,27 +223,26 @@ public class LookupTable
                 $"Method '{dependsOnNode}' does not exist in lookup table"
             );
         }
-        else if (!HasDependency(methodNode, dependsOnNode))
+        else if (!HasDependency(cSharpMethodNode, dependsOnNode))
         {
             throw new Exception(
-                $"Method '{methodNode}' does not depend on '{dependsOnNode}'"
+                $"Method '{cSharpMethodNode}' does not depend on '{dependsOnNode}'"
             );
         }
 
-        DataRow row = table
+        DataRow row = Table
             .AsEnumerable()
-            .Where(row => row["identifier"].Equals(methodNode))
-            .Single();
-        row.Field<List<Method>>("dependencies").Remove(dependsOnNode);
+            .Single(row => row["identifier"].Equals(cSharpMethodNode));
+        row.Field<List<CSharpMethod>>("dependencies").Remove(dependsOnNode);
     }
 
-    public bool HasDependency(Method method, Method dependsOn)
+    public bool HasDependency(CSharpMethod cSharpMethod, CSharpMethod dependsOn)
     {
-        return table
+        return Table
             .AsEnumerable()
             .Any(row =>
-                row["identifier"].Equals(method) &&
-                row.Field<IEnumerable<Method>>("dependencies").Contains(dependsOn)
+                row["identifier"].Equals(cSharpMethod) &&
+                row.Field<IEnumerable<CSharpMethod>>("dependencies").Contains(dependsOn)
             );
     }
 
@@ -246,74 +250,73 @@ public class LookupTable
     /// Adds method to the lookup table if it is not already in the lookup
     /// table
     /// </summary>
-    /// <param name="methodNode">The method to add</param>
-    public void AddMethod(Method methodNode)
+    /// <param name="cSharpMethodNode">The method to add</param>
+    public void AddMethod(CSharpMethod cSharpMethodNode)
     {
-        if (!HasMethod(methodNode))
+        if (!HasMethod(cSharpMethodNode))
         {
-            table.Rows.Add(methodNode, new List<Method>(), PurityValue.Pure);
+            Table.Rows.Add(cSharpMethodNode, new List<CSharpMethod>(), PurityValue.Pure);
         }
     }
 
-    public void RemoveMethod(Method methodNode)
+    public void RemoveMethod(CSharpMethod cSharpMethodNode)
     {
-        if (!HasMethod(methodNode))
+        if (!HasMethod(cSharpMethodNode))
         {
             throw new Exception(
-                $"Method '{methodNode}' does not exist in lookup table"
+                $"Method '{cSharpMethodNode}' does not exist in lookup table"
             );
         }
         else
         {
-            table
+            Table
                 .AsEnumerable()
-                .Where(row => row["identifier"].Equals(methodNode))
-                .Single()
+                .Single(row => row["identifier"].Equals(cSharpMethodNode))
                 .Delete();
         }
     }
 
-    public bool HasMethod(Method methodNode)
+    public bool HasMethod(CSharpMethod cSharpMethodNode)
     {
-        return table
+        return Table
             .AsEnumerable()
-            .Any(row => row["identifier"].Equals(methodNode));
+            .Any(row => row["identifier"].Equals(cSharpMethodNode));
     }
 
-    public PurityValue GetPurity(Method method)
+    public PurityValue GetPurity(CSharpMethod cSharpMethod)
     {
-        return (PurityValue) GetMethodRow(method)["purity"];
+        return (PurityValue) GetMethodRow(cSharpMethod)["purity"];
     }
 
     /// <summary>
-    /// Sets the purity of <paramref name="method"/> to <paramref
+    /// Sets the purity of <paramref name="cSharpMethod"/> to <paramref
     /// name="purityValue"/> if <paramref name="purityValue"/> is less pure than
-    /// <paramref name="method"/>'s previous purity.
+    /// <paramref name="cSharpMethod"/>'s previous purity.
     /// </summary>
-    /// <param name="method">The method</param>
+    /// <param name="cSharpMethod">The method</param>
     /// <param name="purityValue">The new purity</param>
-    public void SetPurity(Method method, PurityValue purityValue)
+    public void SetPurity(CSharpMethod cSharpMethod, PurityValue purityValue)
     {
-        if (purityValue < GetPurity(method))
+        if (purityValue < GetPurity(cSharpMethod))
         {
-            GetMethodRow(method)["purity"] = purityValue;
+            GetMethodRow(cSharpMethod)["purity"] = purityValue;
         }
     }
 
     public LookupTable GetMethodsWithKnownPurities()
     {
-        DataTable result = table
+        DataTable result = Table
             .AsEnumerable()
             .Where(row => (PurityValue) row["purity"] != (PurityValue.Unknown))
             .CopyToDataTable();
         return new LookupTable(result, this);
     }
 
-    public DataRow GetMethodRow(Method method)
+    public DataRow GetMethodRow(CSharpMethod cSharpMethod)
     {
-        return table
+        return Table
             .AsEnumerable()
-            .Where(row => row["identifier"].Equals(method))
+            .Where(row => row["identifier"].Equals(cSharpMethod))
             .Single();
     }
 
@@ -325,7 +328,7 @@ public class LookupTable
     /// <returns>
     /// All methods in <paramref name="methods"/> are marked `Impure`
     /// </returns>
-    public IEnumerable<Method> GetAllImpureMethods(IEnumerable<Method> methods)
+    public IEnumerable<CSharpMethod> GetAllImpureMethods(IEnumerable<CSharpMethod> methods)
     {
         return methods.Where(m => GetPurity(m).Equals(PurityValue.Impure));
     }
@@ -333,15 +336,15 @@ public class LookupTable
     /// <summary>
     /// Gets all callers to a given method, i.e. that depend on it.
     /// </summary>
-    /// <param name="method">The method</param>
+    /// <param name="cSharpMethod">The method</param>
     /// <returns>
-    /// All methods that depend on <paramref name="method"/>.
+    /// All methods that depend on <paramref name="cSharpMethod"/>.
     /// </returns>
-    public IEnumerable<Method> GetCallers(Method method)
+    public IEnumerable<CSharpMethod> GetCallers(CSharpMethod cSharpMethod)
     {
-        return table.AsEnumerable().Where(
-            r => r.Field<IEnumerable<Method>>("dependencies").Contains(method)
-        ).Select(r => r.Field<Method>("identifier"));
+        return Table.AsEnumerable().Where(
+            r => r.Field<IEnumerable<CSharpMethod>>("dependencies").Contains(cSharpMethod)
+        ).Select(r => r.Field<CSharpMethod>("identifier"));
     }
 
     /// <summary>
@@ -355,8 +358,8 @@ public class LookupTable
     public LookupTable StripMethodsNotDeclaredInAnalyzedFiles()
     {
         LookupTable result = Copy();
-        List<Method> methods = new List<Method>();
-        foreach (var tree in trees)
+        List<CSharpMethod> methods = new List<CSharpMethod>();
+        foreach (var tree in Trees)
         {
             var methodDeclarations = tree
                 .GetRoot()
@@ -364,13 +367,13 @@ public class LookupTable
                 .OfType<MethodDeclarationSyntax>();
             foreach (var methodDeclaration in methodDeclarations)
             {
-                methods.Add(new Method(methodDeclaration));
+                methods.Add(new CSharpMethod(methodDeclaration));
             }
         }
 
-        foreach (var row in table.AsEnumerable())
+        foreach (var row in Table.AsEnumerable())
         {
-            var method = row.Field<Method>("identifier");
+            var method = row.Field<CSharpMethod>("identifier");
             if (!methods.Contains(method)) result.RemoveMethod(method);
         }
 
@@ -379,7 +382,7 @@ public class LookupTable
 
     public int CountMethods()
     {
-        return table.Rows.Count;
+        return Table.Rows.Count;
     }
 
     /// <summary>
@@ -396,11 +399,11 @@ public class LookupTable
     /// </returns>
     public int CountMethods(bool havePureAttribute)
     {
-        return table.AsEnumerable().Where(row =>
+        return Table.AsEnumerable().Where(row =>
         {
-            Method method = row.Field<Method>("identifier");
-            return method.HasPureAttribute() && havePureAttribute ||
-                   !method.HasPureAttribute() && !havePureAttribute;
+            CSharpMethod cSharpMethod = row.Field<CSharpMethod>("identifier");
+            return cSharpMethod.HasPureAttribute() && havePureAttribute ||
+                   !cSharpMethod.HasPureAttribute() && !havePureAttribute;
         }).Count();
     }
 
@@ -414,10 +417,9 @@ public class LookupTable
     /// </returns>
     public int CountMethodsWithPurity(PurityValue purityValue)
     {
-        return table
+        return Table
             .AsEnumerable()
-            .Where(row => row.Field<PurityValue>("purity") == (purityValue))
-            .Count();
+            .Count(row => DataRowExtensions.Field<PurityValue>(row, "purity") == (purityValue));
     }
 
     /// <summary>
@@ -458,24 +460,24 @@ public class LookupTable
         );
     }
 
-    public IEnumerable<Method> GetMethodsWithPurity(PurityValue purityValue, bool hasPureAttribute)
+    public IEnumerable<CSharpMethod> GetMethodsWithPurity(PurityValue purityValue, bool hasPureAttribute)
     {
         return GetMethodsWithPurity(new PurityValue[] {purityValue}, hasPureAttribute);
     }
 
-    public IEnumerable<Method> GetMethodsWithPurity(PurityValue[] purities, bool hasPureAttribute)
+    public IEnumerable<CSharpMethod> GetMethodsWithPurity(PurityValue[] purities, bool hasPureAttribute)
     {
-        return table.AsEnumerable().Where(row =>
+        return Table.AsEnumerable().Where(row =>
         {
             bool hasPurity = purities.Contains(row.Field<PurityValue>("purity"));
-            bool methodHasPureAttribute = row.Field<Method>("identifier")
+            bool methodHasPureAttribute = row.Field<CSharpMethod>("identifier")
                 .HasPureAttribute();
 
             return hasPurity && (
                 methodHasPureAttribute && hasPureAttribute ||
                 !methodHasPureAttribute && !hasPureAttribute
             );
-        }).Select(r => r.Field<Method>("identifier"));
+        }).Select(r => r.Field<CSharpMethod>("identifier"));
     }
 
     /// <summary>
@@ -486,13 +488,13 @@ public class LookupTable
     public LookupTable StripInterfaceMethods()
     {
         LookupTable result = Copy();
-        List<Method> interfaceMethods = result
-            .table
+        List<CSharpMethod> interfaceMethods = result
+            .Table
             .AsEnumerable()
-            .Where(row => row.Field<Method>("identifier").IsInterfaceMethod())
-            .Select(row => row.Field<Method>("identifier"))
+            .Where(row => row.Field<CSharpMethod>("identifier").IsInterfaceMethod())
+            .Select(row => row.Field<CSharpMethod>("identifier"))
             .ToList();
-        foreach (Method method in interfaceMethods)
+        foreach (CSharpMethod method in interfaceMethods)
         {
             result.RemoveMethod(method);
         }
@@ -568,15 +570,15 @@ public class LookupTable
     public override string ToString()
     {
         string result = "";
-        foreach (var row in table.AsEnumerable())
+        foreach (var row in Table.AsEnumerable())
         {
             foreach (var item in row.ItemArray)
             {
-                if (item is Method method)
+                if (item is CSharpMethod method)
                 {
                     result += method;
                 }
-                else if (item is IEnumerable<Method> methods)
+                else if (item is IEnumerable<CSharpMethod> methods)
                 {
                     List<string> resultList = new List<string>();
                     var dependencies = methods;
@@ -626,13 +628,13 @@ public class LookupTable
         string result = FormatTwoColumn("METHOD", "PURITY LEVEL")
                         + new string('-', printoutWidth + 13)
                         + "\n";
-        foreach (var row in table.AsEnumerable())
+        foreach (var row in Table.AsEnumerable())
         {
-            Method identifierMethod = row.Field<Method>("identifier");
-            string identifier = identifierMethod.ToString();
+            CSharpMethod identifierCSharpMethod = row.Field<CSharpMethod>("identifier");
+            string identifier = identifierCSharpMethod.ToString();
             string purity = row.Field<PurityValue>("purity").ToString();
 
-            if (!pureAttributeOnly || pureAttributeOnly && identifierMethod.HasPureAttribute())
+            if (!pureAttributeOnly || pureAttributeOnly && identifierCSharpMethod.HasPureAttribute())
             {
                 result += FormatTwoColumn(identifier, purity);
             }

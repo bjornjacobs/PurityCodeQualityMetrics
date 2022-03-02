@@ -5,7 +5,7 @@ using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using PurityCodeQualityMetrics.Purity;
+using PurityCodeQualityMetrics.Purity.CsPurity;
 using Xunit;
 
 namespace PurityCodeQualityMetrics.Tests.Purity;
@@ -57,9 +57,9 @@ public class CsPurityTests
             LookupTable result2 = new PurityAnalyzer(file2).Analyze();
             LookupTable result3 = new PurityAnalyzer(file3).Analyze();
 
-            Assert.False(result1.table.AsEnumerable().Any());
-            Assert.False(result2.table.AsEnumerable().Any());
-            Assert.False(result3.table.AsEnumerable().Any());
+            Assert.False(result1.Table.AsEnumerable().Any());
+            Assert.False(result2.Table.AsEnumerable().Any());
+            Assert.False(result3.Table.AsEnumerable().Any());
         }
 
         /// <summary>
@@ -129,11 +129,11 @@ public class CsPurityTests
             ");
             PurityAnalyzer PurityAnalyzer = new PurityAnalyzer(file);
             var fooDeclaration =
-                HelpMethods.GetMethodDeclaration("foo", PurityAnalyzer.LookupTable.trees.Single().GetRoot());
+                HelpMethods.GetMethodDeclaration("foo", PurityAnalyzer.LookupTable.Trees.Single().GetRoot());
             var barDeclaration =
-                HelpMethods.GetMethodDeclaration("bar", PurityAnalyzer.LookupTable.trees.Single().GetRoot());
+                HelpMethods.GetMethodDeclaration("bar", PurityAnalyzer.LookupTable.Trees.Single().GetRoot());
             var fazDeclaration =
-                HelpMethods.GetMethodDeclaration("faz", PurityAnalyzer.LookupTable.trees.Single().GetRoot());
+                HelpMethods.GetMethodDeclaration("faz", PurityAnalyzer.LookupTable.Trees.Single().GetRoot());
 
             Assert.True(PurityAnalyzer.ReadsStaticFieldOrProperty(fooDeclaration));
             Assert.False(PurityAnalyzer.ReadsStaticFieldOrProperty(barDeclaration));
@@ -158,7 +158,7 @@ public class CsPurityTests
             ");
             PurityAnalyzer PurityAnalyzer = new PurityAnalyzer(file);
             var fooDeclaration =
-                HelpMethods.GetMethodDeclaration("foo", PurityAnalyzer.LookupTable.trees.Single().GetRoot());
+                HelpMethods.GetMethodDeclaration("foo", PurityAnalyzer.LookupTable.Trees.Single().GetRoot());
 
             Assert.True(PurityAnalyzer.ReadsStaticFieldOrProperty(fooDeclaration));
         }
@@ -181,7 +181,7 @@ public class CsPurityTests
                 }
             ");
             PurityAnalyzer PurityAnalyzer = new PurityAnalyzer(file);
-            var foo = HelpMethods.GetMethodDeclaration("Foo", PurityAnalyzer.LookupTable.trees.Single().GetRoot());
+            var foo = HelpMethods.GetMethodDeclaration("Foo", PurityAnalyzer.LookupTable.Trees.Single().GetRoot());
 
             Assert.False(PurityAnalyzer.ReadsStaticFieldOrProperty(foo));
         }
@@ -215,7 +215,7 @@ public class CsPurityTests
                 }
             ");
             PurityAnalyzer PurityAnalyzer = new PurityAnalyzer(file);
-            var bar = HelpMethods.GetMethodDeclaration("Bar", PurityAnalyzer.LookupTable.trees.Single().GetRoot());
+            var bar = HelpMethods.GetMethodDeclaration("Bar", PurityAnalyzer.LookupTable.Trees.Single().GetRoot());
 
             Assert.False(PurityAnalyzer.ReadsStaticFieldOrProperty(bar));
         }
@@ -246,7 +246,7 @@ public class CsPurityTests
             ");
             PurityAnalyzer PurityAnalyzer = new PurityAnalyzer(file);
             var fooDeclaration =
-                HelpMethods.GetMethodDeclaration("foo", PurityAnalyzer.LookupTable.trees.Single().GetRoot());
+                HelpMethods.GetMethodDeclaration("foo", PurityAnalyzer.LookupTable.Trees.Single().GetRoot());
 
             Assert.True(PurityAnalyzer.ReadsStaticFieldOrProperty(fooDeclaration));
         }
@@ -481,9 +481,9 @@ public class CsPurityTests
         [Fact]
         public void TestPurityIsKnownPrior()
         {
-            Assert.True(PurityAnalyzer.PurityIsKnownPrior(new Method("Console.WriteLine")));
-            Assert.False(PurityAnalyzer.PurityIsKnownPrior(new Method("foo")));
-            Assert.False(PurityAnalyzer.PurityIsKnownPrior(new Method("")));
+            Assert.True(PurityAnalyzer.PurityIsKnownPrior(new CSharpMethod("Console.WriteLine")));
+            Assert.False(PurityAnalyzer.PurityIsKnownPrior(new CSharpMethod("foo")));
+            Assert.False(PurityAnalyzer.PurityIsKnownPrior(new CSharpMethod("")));
 
             Assert.True(PurityAnalyzer.PurityIsKnownPrior("Console.WriteLine"));
             Assert.False(PurityAnalyzer.PurityIsKnownPrior("foo"));
@@ -499,7 +499,7 @@ public class CsPurityTests
                 }
             ");
             var lt = new PurityAnalyzer(file).Analyze();
-            Method foo = lt.GetMethodByName("foo");
+            CSharpMethod foo = lt.GetMethodByName("foo");
 
             Assert.False(PurityAnalyzer.PurityIsKnownPrior(foo));
         }
@@ -564,7 +564,7 @@ public class CsPurityTests
             var bar = lt.GetMethodByName("Bar");
             var main = lt.GetMethodByName("Main");
 
-            Assert.Equal(3, lt.table.Rows.Count);
+            Assert.Equal(3, lt.Table.Rows.Count);
             Assert.True(lt.HasMethod(foo));
             Assert.True(lt.HasMethod(bar));
             Assert.True(lt.HasMethod(main));
@@ -612,7 +612,7 @@ public class CsPurityTests
             Assert.Equal(foz, lt.CalculateDependencies(foo).Single());
             Assert.True(lt.HasMethod(foo));
             Assert.True(lt.HasMethod(foz));
-            Assert.Equal(2, lt.table.Rows.Count);
+            Assert.Equal(2, lt.Table.Rows.Count);
         }
 
         [Fact]
@@ -645,7 +645,7 @@ public class CsPurityTests
                 }
             ");
             LookupTable lt = new PurityAnalyzer(file).Analyze();
-            Assert.Equal(5, lt.table.Rows.Count);
+            Assert.Equal(5, lt.Table.Rows.Count);
         }
 
         [Fact]
@@ -677,17 +677,17 @@ public class CsPurityTests
                 }
             ");
             LookupTable lt = new PurityAnalyzer(file).Analyze();
-            var tree = lt.trees.Single();
+            var tree = lt.Trees.Single();
             var root = (CompilationUnitSyntax) tree.GetRoot();
 
-            var foo1 = new Method(
+            var foo1 = new CSharpMethod(
                 root
                     .DescendantNodes()
                     .OfType<MethodDeclarationSyntax>()
                     .Where(m => m.Identifier.Text == "Foo")
                     .First()
             );
-            var foo2 = new Method(
+            var foo2 = new CSharpMethod(
                 root
                     .DescendantNodes()
                     .OfType<MethodDeclarationSyntax>()
@@ -702,19 +702,19 @@ public class CsPurityTests
             Assert.Equal(PurityValue.Impure, lt.GetPurity(bar));
             Assert.True(HelpMethods.HaveEqualElements(
                 lt.CalculateDependencies(bar),
-                new List<Method> {foo1, foo2}
+                new List<CSharpMethod> {foo1, foo2}
             ));
 
             Assert.Equal(PurityValue.Pure, lt.GetPurity(bar1));
             Assert.True(HelpMethods.HaveEqualElements(
                 lt.CalculateDependencies(bar1),
-                new List<Method> {foo1}
+                new List<CSharpMethod> {foo1}
             ));
 
             Assert.Equal(PurityValue.Impure, lt.GetPurity(bar2));
             Assert.True(HelpMethods.HaveEqualElements(
                 lt.CalculateDependencies(bar2),
-                new List<Method> {foo2}
+                new List<CSharpMethod> {foo2}
             ));
         }
 
@@ -742,7 +742,7 @@ public class CsPurityTests
             LookupTable lt = new PurityAnalyzer(file).Analyze();
             var foo = lt.GetMethodByName("Foo");
 
-            Assert.Equal(1, lt.table.Rows.Count);
+            Assert.Equal(1, lt.Table.Rows.Count);
             Assert.True(lt.HasMethod(foo));
         }
 
@@ -763,8 +763,8 @@ public class CsPurityTests
                 }
             ");
             LookupTable lt = new PurityAnalyzer(file).Analyze();
-            var foo = new Method(lt
-                .trees
+            var foo = new CSharpMethod(lt
+                .Trees
                 .Single()
                 .GetRoot()
                 .DescendantNodes()
@@ -773,7 +773,7 @@ public class CsPurityTests
                 .Last()
             );
 
-            Assert.Equal(1, lt.table.Rows.Count);
+            Assert.Equal(1, lt.Table.Rows.Count);
             Assert.True(lt.HasMethod(foo));
         }
 
@@ -792,7 +792,7 @@ public class CsPurityTests
             LookupTable lt = new PurityAnalyzer(file).Analyze();
             var foo = lt.GetMethodByName("Foo");
 
-            Assert.Equal(1, lt.table.Rows.Count);
+            Assert.Equal(1, lt.Table.Rows.Count);
             Assert.True(lt.HasMethod(foo));
             Assert.Equal(PurityValue.Pure, lt.GetPurity(foo));
             Assert.True(!lt.CalculateDependencies(foo).Any());
@@ -815,8 +815,8 @@ public class CsPurityTests
                 }
             ");
             LookupTable lt = new PurityAnalyzer(file).Analyze();
-            var foo1 = new Method(lt
-                .trees
+            var foo1 = new CSharpMethod(lt
+                .Trees
                 .Single()
                 .GetRoot()
                 .DescendantNodes()
@@ -824,8 +824,8 @@ public class CsPurityTests
                 .Where(m => m.Identifier.Text == "Foo")
                 .First()
             );
-            var foo2 = new Method(lt
-                .trees
+            var foo2 = new CSharpMethod(lt
+                .Trees
                 .Single()
                 .GetRoot()
                 .DescendantNodes()
@@ -834,7 +834,7 @@ public class CsPurityTests
                 .Last()
             );
 
-            Assert.Equal(2, lt.table.Rows.Count);
+            Assert.Equal(2, lt.Table.Rows.Count);
             Assert.Equal(foo2, lt.CalculateDependencies(foo1).Single());
             Assert.True(!lt.CalculateDependencies(foo2).Any());
         }
@@ -860,7 +860,7 @@ public class CsPurityTests
             var foo = lt.GetMethodByName("Foo");
             var bar = lt.GetMethodByName("Bar");
 
-            Assert.Equal(2, lt.table.Rows.Count);
+            Assert.Equal(2, lt.Table.Rows.Count);
             Assert.Equal(bar, lt.CalculateDependencies(foo).Single());
             Assert.Equal(foo, lt.CalculateDependencies(bar).Single());
         }
@@ -938,7 +938,7 @@ public class CsPurityTests
         [Fact]
         public void TestEnumsAreImpure()
         {
-            if (!PurityAnalyzer.enumsAreImpure) return;
+            if (!PurityAnalyzer.EnumsAreImpure) return;
 
             var file = (@"
             namespace Test {
@@ -972,7 +972,7 @@ public class CsPurityTests
         [Fact]
         public void TestEnumsAreNotImpure()
         {
-            if (PurityAnalyzer.enumsAreImpure) return;
+            if (PurityAnalyzer.EnumsAreImpure) return;
 
             var file = (@"
             namespace Test {
@@ -1116,9 +1116,9 @@ public class CsPurityTests
             var fooDependencies = lt.CalculateDependencies(foo);
             var barDependencies = lt.CalculateDependencies(bar);
             var bazDependencies = lt.CalculateDependencies(baz);
-            var expectedFooDependencies = new List<Method> {bar, baz};
-            var expectedBarDependencies = new List<Method> {baz};
-            var expectedBazDependencies = new List<Method>();
+            var expectedFooDependencies = new List<CSharpMethod> {bar, baz};
+            var expectedBarDependencies = new List<CSharpMethod> {baz};
+            var expectedBazDependencies = new List<CSharpMethod>();
 
             var foo2 = HelpMethods.GetMethodDeclaration("foo", root);
             var eq = foo2.Equals(foo);
@@ -1168,12 +1168,12 @@ public class CsPurityTests
 
             var fooDeclaration = root.DescendantNodes().OfType<MethodDeclarationSyntax>().First();
             var lt = new LookupTable(tree);
-            var fooDependencies = lt.CalculateDependencies(new Method(fooDeclaration));
+            var fooDependencies = lt.CalculateDependencies(new CSharpMethod(fooDeclaration));
             var expectedResults = root
                 .DescendantNodes()
                 .OfType<MethodDeclarationSyntax>()
                 .Where(m => m.Identifier.ToString() != "foo")
-                .Select(m => new Method(m));
+                .Select(m => new CSharpMethod(m));
 
             Assert.True(
                 HelpMethods.HaveEqualElements(
@@ -1213,13 +1213,13 @@ public class CsPurityTests
             var baz = lt.GetMethodByName("baz");
 
             var fooDependencies = lt.CalculateDependencies(foo);
-            var expectedFooDependencies = new List<Method> {bar};
+            var expectedFooDependencies = new List<CSharpMethod> {bar};
 
             var barDependencies = lt.CalculateDependencies(bar);
-            var expectedBarDependencies = new List<Method> {baz};
+            var expectedBarDependencies = new List<CSharpMethod> {baz};
 
             var bazDependencies = lt.CalculateDependencies(baz);
-            var expectedBazDependencies = new List<Method> { };
+            var expectedBazDependencies = new List<CSharpMethod> { };
 
             Assert.True(
                 HelpMethods.HaveEqualElements(
@@ -1288,11 +1288,11 @@ public class CsPurityTests
             var farDependencies = lt.CalculateDependencies(far);
             var fazDependencies = lt.CalculateDependencies(faz);
 
-            var expectedFooDependencies = new List<Method> {bar, baz};
-            var expectedBarDependencies = new List<Method> {far, faz};
-            var expectedBazDependencies = new List<Method> { };
-            var expectedFarDependencies = new List<Method> { };
-            var expectedFazDependencies = new List<Method> { };
+            var expectedFooDependencies = new List<CSharpMethod> {bar, baz};
+            var expectedBarDependencies = new List<CSharpMethod> {far, faz};
+            var expectedBazDependencies = new List<CSharpMethod> { };
+            var expectedFarDependencies = new List<CSharpMethod> { };
+            var expectedFazDependencies = new List<CSharpMethod> { };
 
             Assert.True(
                 HelpMethods.HaveEqualElements(
@@ -1353,12 +1353,12 @@ public class CsPurityTests
 
             var fooDeclaration = root.DescendantNodes().OfType<MethodDeclarationSyntax>().First();
             var lt = new LookupTable(tree);
-            var fooDependencies = lt.CalculateDependencies(new Method(fooDeclaration));
+            var fooDependencies = lt.CalculateDependencies(new CSharpMethod(fooDeclaration));
             var expectedResults = root
                 .DescendantNodes()
                 .OfType<MethodDeclarationSyntax>()
                 .Where(m => m.Identifier.ToString() != "foo")
-                .Select(m => new Method(m));
+                .Select(m => new CSharpMethod(m));
 
             Assert.True(
                 HelpMethods.HaveEqualElements(
@@ -1399,12 +1399,12 @@ public class CsPurityTests
 
             var fooDeclaration = root.DescendantNodes().OfType<MethodDeclarationSyntax>().First();
             var lt = new LookupTable(tree);
-            var fooDependencies = lt.CalculateDependencies(new Method(fooDeclaration));
+            var fooDependencies = lt.CalculateDependencies(new CSharpMethod(fooDeclaration));
             var expectedResults = root
                 .DescendantNodes()
                 .OfType<MethodDeclarationSyntax>()
                 .Where(m => m.Identifier.ToString() != "foo")
-                .Select(m => new Method(m));
+                .Select(m => new CSharpMethod(m));
 
             Assert.True(
                 HelpMethods.HaveEqualElements(
@@ -1442,12 +1442,12 @@ public class CsPurityTests
 
             var fooDeclaration = root.DescendantNodes().OfType<MethodDeclarationSyntax>().First();
             var lt = new LookupTable(tree);
-            var fooDependencies = lt.CalculateDependencies(new Method(fooDeclaration));
+            var fooDependencies = lt.CalculateDependencies(new CSharpMethod(fooDeclaration));
             var expectedResults = root
                 .DescendantNodes()
                 .OfType<MethodDeclarationSyntax>()
                 .Where(m => m.Identifier.ToString() != "foo")
-                .Select(m => new Method(m));
+                .Select(m => new CSharpMethod(m));
 
             Assert.True(
                 HelpMethods.HaveEqualElements(
@@ -1474,10 +1474,10 @@ public class CsPurityTests
 
             var fooDeclaration = root.DescendantNodes().OfType<MethodDeclarationSyntax>().First();
             var lt = new LookupTable(tree);
-            var fooDependencies = lt.CalculateDependencies(new Method(fooDeclaration));
+            var fooDependencies = lt.CalculateDependencies(new CSharpMethod(fooDeclaration));
             var cwlInvocation = root.DescendantNodes().OfType<InvocationExpressionSyntax>().Single();
             SemanticModel model = PurityAnalyzer.GetSemanticModel(new List<SyntaxTree> {tree}, tree);
-            var expectedResultList = new List<Method> {new Method(cwlInvocation, model)};
+            var expectedResultList = new List<CSharpMethod> {new CSharpMethod(cwlInvocation, model)};
 
             Assert.True(
                 HelpMethods.HaveEqualElements(
@@ -1517,7 +1517,7 @@ public class CsPurityTests
                 HelpMethods.GetMethodDeclaration("bar", root)
             );
 
-            Assert.True(HelpMethods.TablesAreEqual(lookupTable2.table, lookupTable1.table));
+            Assert.True(HelpMethods.TablesAreEqual(lookupTable2.Table, lookupTable1.Table));
         }
 
         [Fact]
@@ -1554,7 +1554,7 @@ public class CsPurityTests
                 HelpMethods.GetMethodDeclaration("bar", root)
             );
 
-            Assert.True(HelpMethods.TablesAreEqual(lookupTable2.table, lookupTable1.table));
+            Assert.True(HelpMethods.TablesAreEqual(lookupTable2.Table, lookupTable1.Table));
         }
 
         [Fact]
@@ -1642,7 +1642,7 @@ public class CsPurityTests
 
             var foo = HelpMethods.GetMethodDeclaration("foo", root);
             var bar = HelpMethods.GetMethodDeclaration("bar", root);
-            var cwl = new Method("Console.WriteLine");
+            var cwl = new CSharpMethod("Console.WriteLine");
 
             Assert.True(lookupTable.HasMethod(foo));
             Assert.True(lookupTable.HasMethod(bar));
@@ -1674,18 +1674,17 @@ public class CsPurityTests
             ");
             LookupTable lt = new PurityAnalyzer(file).Analyze();
 
-            var foo = new Method(lt
-                .trees
+            var foo = new CSharpMethod(lt
+                .Trees
                 .Single()
                 .GetRoot()
                 .DescendantNodes()
                 .OfType<MethodDeclarationSyntax>()
-                .Where(m => m.Identifier.Text == "Foo")
-                .First()
+                .First(m => m.Identifier.Text == "Foo")
             );
 
             lt = lt.StripInterfaceMethods();
-            Assert.Equal(1, lt.table.Rows.Count);
+            Assert.Equal(1, lt.Table.Rows.Count);
             Assert.True(lt.HasMethod(foo));
         }
 
@@ -1816,21 +1815,21 @@ public class CsPurityTests
 
             LookupTable lookupTable = new LookupTable(tree);
 
-            var expectedResult = new List<Method>() {bazDeclaration, fozDeclaration};
+            var expectedResult = new List<CSharpMethod>() {bazDeclaration, fozDeclaration};
 
             Assert.True(
                 HelpMethods.HaveEqualElements(
                     expectedResult,
-                    lookupTable.workingSet
+                    lookupTable.WorkingSet
                 )
             );
 
-            lookupTable.workingSet.Calculate();
+            lookupTable.WorkingSet.Calculate();
 
             Assert.True(
                 HelpMethods.HaveEqualElements(
                     new List<MethodDeclarationSyntax>(),
-                    lookupTable.workingSet
+                    lookupTable.WorkingSet
                 )
             );
         }
@@ -1937,14 +1936,14 @@ public class CsPurityTests
 
             lookupTable.SetPurity(fooDeclaration, PurityValue.Impure);
             lookupTable.SetPurity(barDeclaration, PurityValue.Impure);
-            var workingSet = new List<Method>
+            var workingSet = new List<CSharpMethod>
             {
                 fooDeclaration,
                 barDeclaration,
                 bazDeclaration,
                 fozDeclaration
             };
-            var expected = new List<Method>
+            var expected = new List<CSharpMethod>
             {
                 fooDeclaration,
                 barDeclaration
@@ -1995,12 +1994,12 @@ public class CsPurityTests
             LookupTable lookupTable = new LookupTable(tree);
 
             var result = lookupTable.GetCallers(bazDeclaration);
-            var expected = new List<Method> {fooDeclaration, barDeclaration};
+            var expected = new List<CSharpMethod> {fooDeclaration, barDeclaration};
             Assert.True(HelpMethods.HaveEqualElements(result, expected));
             Assert.Equal(0, lookupTable.GetCallers(fozDeclaration).Count());
 
             result = lookupTable.GetCallers(barDeclaration);
-            expected = new List<Method> {fooDeclaration};
+            expected = new List<CSharpMethod> {fooDeclaration};
             Assert.True(HelpMethods.HaveEqualElements(result, expected));
         }
 
@@ -2327,7 +2326,7 @@ public class CsPurityTests
             {
                 return assignees
                     .Where(a =>
-                        Method
+                        CSharpMethod
                             .GetBaseIdentifiers(a)
                             .ToString()
                             .Equals(identifier)
@@ -2405,7 +2404,7 @@ public class CsPurityTests
                 }
             ");
             PurityAnalyzer PurityAnalyzer = new PurityAnalyzer(file);
-            var tree = PurityAnalyzer.LookupTable.trees.First();
+            var tree = PurityAnalyzer.LookupTable.Trees.First();
             var root = (CompilationUnitSyntax) tree.GetRoot();
 
             var foo = HelpMethods.GetMethodDeclaration("Foo", root);
@@ -2456,7 +2455,7 @@ public class CsPurityTests
                 }
             ");
             PurityAnalyzer PurityAnalyzer = new PurityAnalyzer(file);
-            var tree = PurityAnalyzer.LookupTable.trees.First();
+            var tree = PurityAnalyzer.LookupTable.Trees.First();
             var root = (CompilationUnitSyntax) tree.GetRoot();
 
             var foo = HelpMethods.GetMethodDeclaration("Foo", root);
@@ -2522,7 +2521,7 @@ public class CsPurityTests
                 }
             ");
             PurityAnalyzer PurityAnalyzer = new PurityAnalyzer(file);
-            var tree = PurityAnalyzer.LookupTable.trees.First();
+            var tree = PurityAnalyzer.LookupTable.Trees.First();
             var root = (CompilationUnitSyntax) tree.GetRoot();
 
             var foo = HelpMethods.GetMethodDeclaration("Foo", root);
@@ -2539,7 +2538,7 @@ public class CsPurityTests
 
     public static class HelpMethods
     {
-        public static Method GetMethodDeclaration(
+        public static CSharpMethod GetMethodDeclaration(
             string name,
             SyntaxNode root
         )
@@ -2549,12 +2548,12 @@ public class CsPurityTests
                 .OfType<MethodDeclarationSyntax>()
                 .Where(m => m.Identifier.Text == name)
                 .Single();
-            return new Method(methodDeclaration);
+            return new CSharpMethod(methodDeclaration);
         }
 
-        public static ExpressionSyntax GetAssignmentByName(string name, Method method)
+        public static ExpressionSyntax GetAssignmentByName(string name, CSharpMethod cSharpMethod)
         {
-            return method.GetAssignees().Where(a => a.ToString() == name).Single();
+            return cSharpMethod.GetAssignees().Where(a => a.ToString() == name).Single();
         }
 
         // Rows need to be in the same order in both tables
@@ -2573,11 +2572,11 @@ public class CsPurityTests
             static bool RowsAreEqual(DataRow row1, DataRow row2)
             {
                 return
-                    row1.Field<Method>("identifier").Equals(row2.Field<Method>("identifier")) &&
+                    row1.Field<CSharpMethod>("identifier").Equals(row2.Field<CSharpMethod>("identifier")) &&
                     row1.Field<PurityValue>("purity").Equals(row2.Field<PurityValue>("purity")) &&
                     HaveEqualElements(
-                        row1.Field<List<Method>>("dependencies"),
-                        row2.Field<List<Method>>("dependencies")
+                        row1.Field<List<CSharpMethod>>("dependencies"),
+                        row2.Field<List<CSharpMethod>>("dependencies")
                     );
             }
         }
@@ -2625,8 +2624,8 @@ public class CsPurityTests
 
             SemanticModel model = PurityAnalyzer.GetSemanticModel(new List<SyntaxTree> {tree}, tree);
 
-            var clwMethod = new Method(clwInvocation, model);
-            var barMethod = new Method(barInvocation, model);
+            var clwMethod = new CSharpMethod(clwInvocation, model);
+            var barMethod = new CSharpMethod(barInvocation, model);
 
             Assert.Equal("Console.WriteLine", clwMethod.Identifier);
             Assert.Null(clwMethod.Declaration);
@@ -2719,7 +2718,7 @@ public class CsPurityTests
             var tree = CSharpSyntaxTree.ParseText(file);
             var root = (CompilationUnitSyntax) tree.GetRoot();
 
-            var i = Method.FlattenTuple(
+            var i = CSharpMethod.FlattenTuple(
                 root.DescendantNodes().OfType<TupleExpressionSyntax>().First()
             );
 
@@ -2733,13 +2732,13 @@ public class CsPurityTests
                 .OfType<TupleExpressionSyntax>()
                 .ElementAt(1);
 
-            var flatSmallTuple = Method.FlattenTuple(smallTuple);
+            var flatSmallTuple = CSharpMethod.FlattenTuple(smallTuple);
             Assert.Equal(3, flatSmallTuple.Count());
             Assert.Equal(1, ContainsAmountOfIdentifiers(flatSmallTuple, "99"));
             Assert.Equal(1, ContainsAmountOfIdentifiers(flatSmallTuple, "98"));
             Assert.Equal(1, ContainsAmountOfIdentifiers(flatSmallTuple, "97"));
 
-            var flatLargeTuple = Method.FlattenTuple(largeTuple);
+            var flatLargeTuple = CSharpMethod.FlattenTuple(largeTuple);
             Assert.Equal(4, flatLargeTuple.Count());
             Assert.Equal(1, ContainsAmountOfIdentifiers(flatLargeTuple, "e"));
             Assert.Equal(1, ContainsAmountOfIdentifiers(flatLargeTuple, "f"));

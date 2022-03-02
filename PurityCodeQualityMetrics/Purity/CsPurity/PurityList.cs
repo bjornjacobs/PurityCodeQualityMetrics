@@ -1,4 +1,4 @@
-﻿namespace PurityCodeQualityMetrics.Purity;
+﻿namespace PurityCodeQualityMetrics.Purity.CsPurity;
 
 public class PurityList
 {
@@ -40,5 +40,8 @@ public class PurityList
         ("List.Dispose()", PurityValue.Pure),
         ("System.Linq.Where", PurityValue.Pure),
         ("System.Linq.FirstOrDefault", PurityValue.Pure),
+        ("a.Where", PurityValue.Pure),
+        ("a.Where(x=>x==5).Where", PurityValue.Pure),
+        ("a.Where(x=>x==5).Where(y=>y>5).FirstOrDefault", PurityValue.Pure)
     };
 }

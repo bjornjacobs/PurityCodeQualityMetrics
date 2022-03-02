@@ -1,6 +1,6 @@
 ﻿using System.Data;
 
-namespace PurityCodeQualityMetrics.Purity;
+namespace PurityCodeQualityMetrics.Purity.CsPurity;
 
 
 /// <summary>
@@ -10,10 +10,10 @@ namespace PurityCodeQualityMetrics.Purity;
 /// empty dependency set has already been in the working set, it is not
 /// re-added.
 /// </summary>
-public class WorkingSet : List<Method>
+public class WorkingSet : List<CSharpMethod>
 {
     private readonly LookupTable _lookupTable;
-    private readonly List<Method> _history = new List<Method>();
+    private readonly List<CSharpMethod> _history = new List<CSharpMethod>();
 
     public WorkingSet(LookupTable lookupTable)
     {
@@ -25,10 +25,10 @@ public class WorkingSet : List<Method>
     {
         Clear();
 
-        foreach (var row in _lookupTable.table.AsEnumerable())
+        foreach (var row in _lookupTable.Table.AsEnumerable())
         {
-            Method identifier = row.Field<Method>("identifier");
-            IEnumerable<Method> dependencies = row.Field<IEnumerable<Method>>("dependencies");
+            CSharpMethod identifier = row.Field<CSharpMethod>("identifier");
+            IEnumerable<CSharpMethod> dependencies = row.Field<IEnumerable<CSharpMethod>>("dependencies");
             if (!dependencies.Any() && !_history.Contains(identifier))
             {
                 Add(identifier);
