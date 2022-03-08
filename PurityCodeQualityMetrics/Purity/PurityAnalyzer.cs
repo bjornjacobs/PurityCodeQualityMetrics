@@ -13,8 +13,7 @@ public class PurityAnalyzer
     private readonly List<IViolationPolicy> _violationsPolicies = new List<IViolationPolicy>
     {
         new ThrowsExceptionViolationPolicy(),
-        new ReadsStaticFieldViolationPolicy(),
-        new ModifiesGlobalStateViolationPolicy(),
+        new StaticFieldViolationPolicy(),
     };
 
     public async Task<IList<PurityReport>> GeneratePurityReports(string project)

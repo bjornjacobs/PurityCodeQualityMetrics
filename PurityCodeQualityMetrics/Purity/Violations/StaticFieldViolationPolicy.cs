@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace PurityCodeQualityMetrics.Purity.Violations;
 
-public class ReadsStaticFieldViolationPolicy : IViolationPolicy
+public class StaticFieldViolationPolicy : IViolationPolicy
 {
     public List<PurityViolation> Check(MethodDeclarationSyntax method, SyntaxTree tree, SemanticModel model)
     {
@@ -11,9 +11,7 @@ public class ReadsStaticFieldViolationPolicy : IViolationPolicy
             .DescendantNodes()
             .OfType<IdentifierNameSyntax>();
 
-        return identifiers
-            .Where(x => x.Parent is not AssignmentExpressionSyntax)
-            .Where(x =>
+        return identifiers.Where(x =>
         {
             ISymbol? symbol = model.GetSymbolInfo(x).Symbol;
             if (symbol == null) return false;
@@ -25,7 +23,9 @@ public class ReadsStaticFieldViolationPolicy : IViolationPolicy
             bool isEnumConstant = symbol.IsEnumConstant();
 
             return isStatic && (isField || isProperty) && !isMethod && !isEnumConstant;
-        }).Select(x => PurityViolation.ReadsGlobalState).ToList();
+        })
+            .Select(x => x.IsAssignedTo() ? PurityViolation.ModifiesGlobalState : PurityViolation.ReadsGlobalState)
+            .ToList();
         
     }
 }
