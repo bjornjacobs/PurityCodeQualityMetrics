@@ -19,13 +19,10 @@ public class PurityAnalyzer
     public async Task<IList<PurityReport>> GeneratePurityReports(string project)
     {
         using var workspace = MSBuildWorkspace.Create();
-        workspace.WorkspaceFailed += (o, e) =>
-        {
-            
-        };
+        workspace.WorkspaceFailed += (o, e) => throw new Exception(e.ToString());
         var currentProject = await workspace.OpenProjectAsync(project);
 
-        if (!currentProject.MetadataReferences.Any()) throw new Exception("References are empty");
+        if (!currentProject.MetadataReferences.Any()) throw new Exception("References are empty: this usually means that MsBuild didn't load correctly");
         var compilation = await currentProject.GetCompilationAsync();
 
         if (compilation == null) throw new Exception("Could not compile project");
@@ -76,13 +73,15 @@ public class PurityAnalyzer
     {
         return m.DescendantNodes().OfType<InvocationExpressionSyntax>().Select(c =>
         {
-            var ms = model.GetSymbolInfo(c).Symbol as IMethodSymbol;
-            return ms == null ? new MethodDependency(c.ToString(), "UNKOWN", new ImmutableArray<string>()) : new MethodDependency(
-                ms.Name,
-                ms.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
-                ms.Parameters.Select(x =>
+            var symbol = model.GetSymbolInfo(c).Symbol as IMethodSymbol;
+            return symbol == null ? 
+                new MethodDependency(c.ToString(), "UNKNOWN", new ImmutableArray<string>(), false, false) : 
+                new MethodDependency(
+                symbol.Name,
+                symbol.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
+                symbol.Parameters.Select(x =>
                         x.Type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat))
-                    .ToImmutableList());
+                    .ToImmutableList(), false, false);
         }).ToList();
     }
 }

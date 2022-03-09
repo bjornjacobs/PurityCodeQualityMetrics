@@ -1,65 +1,48 @@
 ﻿using Microsoft.Build.Locator;
-using PurityCodeQualityMetrics.Purity;
+using PurityCodeQualityMetrics.Purity;using PurityCodeQualityMetrics.Tests.Purity;
 using PurityCodeQualityMetrics.Tests.Purity.TestCode;
 using Xunit;
+
+using static PurityCodeQualityMetrics.Tests.Purity.Helper;
 
 namespace PurityCodeQualityMetrics.Tests.Purity;
 
 public class PurityAnalyzerTests
 {
     private readonly PurityAnalyzer _sut = new();
-    private readonly TestClass _testClassInstance = new(); //For the use of nameof()
     
-    private async Task<IList<PurityReport>> GetReports()
-    {
-        if(!MSBuildLocator.IsRegistered)
-            MSBuildLocator.RegisterDefaults();
-        
-        //Load itself to get reports for testclasses
-        var dir = Directory.GetCurrentDirectory();
-        const string projectDir = "PurityCodeQualityMetrics";
-        const string testPath = "/PurityCodeQualityMetrics.Tests/PurityCodeQualityMetrics.Tests.csproj";
-        
-        var testProject = dir.Split(projectDir).First() + projectDir + testPath;
-        var reports = await _sut.GeneratePurityReports(testProject);
-        return reports;
-    }
+    //For the use of nameof()
+    private static readonly GloballyImpureTestClass GloballyImpureTestClassInstance = new();
+    private static readonly PureFunctionsTestCases PureFunctionsTestCases = new();
+    
 
-    [Fact]
-    public async Task Pure()
-    {
-        var reports = await GetReports();
-        var r = reports.First(x => x.Name == nameof(_testClassInstance.PureFunction));
-        Assert.Empty(r.Violations);
-    }
+    public static IEnumerable<object[]> GloballyTestData =>
+        new List<object[]>
+        {
+            GenerateTestData(nameof(GloballyImpureTestClassInstance.ModifyAndReturn), PurityViolation.ModifiesGlobalState, PurityViolation.ReadsGlobalState),
+            GenerateTestData(nameof(GloballyImpureTestClassInstance.ModifyAndReturnOtherClass), PurityViolation.ModifiesGlobalState, PurityViolation.ReadsGlobalState),
+            GenerateTestData(nameof(GloballyImpureTestClassInstance.UseInExpression), PurityViolation.ReadsGlobalState, PurityViolation.ReadsGlobalState),
+            GenerateTestData(nameof(GloballyImpureTestClassInstance.AssignToExistingVariable),  PurityViolation.ReadsGlobalState),
+            GenerateTestData(nameof(GloballyImpureTestClassInstance.AssignToNewVariable), PurityViolation.ReadsGlobalState)
+        };
 
-    [Fact]
-    public async Task ModifiesLocal_ReadsLocal()
+    public static IEnumerable<object[]> PureFunctionsTestData =>
+        new List<object[]>
+        {
+            GenerateTestData(nameof(PureFunctionsTestCases.PureFunction1)),
+            GenerateTestData(nameof(PureFunctionsTestCases.PureFunction2)),
+            GenerateTestData(nameof(PureFunctionsTestCases.PureFunctionLambda)),
+            GenerateTestData(nameof(PureFunctionsTestCases.PureFunctionParameters))
+        };
+
+    [Theory]
+    [MemberData(nameof(GloballyTestData))]
+    [MemberData(nameof(PureFunctionsTestData))]
+    public async Task TestCases(string name, List<PurityViolation> violations)
     {
-        var reports = await GetReports();
-        var r = reports.First(x => x.Name == nameof(_testClassInstance.LocallyImpure));
-        Assert.Contains(PurityViolation.ModifiesLocalState, r.Violations);
-        Assert.Contains(PurityViolation.ReadsLocalState, r.Violations);
-        Assert.Equal(2, r.Violations.Count);
-    }
-    
-    [Fact]
-    public async Task ModifiesGlobal_ReadsGlobal()
-    {
-        var reports = await GetReports();
-        var r = reports.First(x => x.Name == nameof(_testClassInstance.GloballyImpure));
-        Assert.Contains(PurityViolation.ModifiesGlobalState, r.Violations);
-        Assert.Contains(PurityViolation.ReadsGlobalState, r.Violations);
-        Assert.Equal(2, r.Violations.Count);
-    }
-    
-    [Fact]
-    public async Task ModifiesGlobal_ReadsGlobal_OtherClass()
-    {
-        var reports = await GetReports();
-        var r = reports.First(x => x.Name == nameof(_testClassInstance.GloballyImpureOtherClass));
-        Assert.Contains(PurityViolation.ModifiesGlobalState, r.Violations);
-        Assert.Contains(PurityViolation.ReadsGlobalState, r.Violations);
-        Assert.Equal(2, r.Violations.Count);
+        var reports = await GenerateReports(_sut);
+        var r = reports.First(x => x.Name == name);
+        violations.ForEach(x => Assert.Contains(x, r.Violations));
+        Assert.Equal(violations.Count, r.Violations.Count);
     }
 }
