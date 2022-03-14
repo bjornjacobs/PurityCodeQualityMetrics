@@ -22,4 +22,11 @@ public static class HelperExtensions
                node.Parent is AssignmentExpressionSyntax assignmentSyntax && assignmentSyntax.Right.Equals(node) ||
                node.Parent is not AssignmentExpressionSyntax && node.Parent.IsNotAssignedTo();
     }
+
+    public static SyntaxNode GetMethodThatBelongsTo(this SyntaxNode node)
+    {
+        if (node.Parent == null) return null;
+        if (node.Parent is MethodDeclarationSyntax or LocalFunctionStatementSyntax) return node.Parent;
+        return GetMethodThatBelongsTo(node.Parent);
+    }
 }

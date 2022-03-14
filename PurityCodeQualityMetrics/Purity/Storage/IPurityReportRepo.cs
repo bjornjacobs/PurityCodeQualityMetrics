@@ -4,8 +4,12 @@ public interface IPurityReportRepo
 {
     public PurityReport? GetByName(string name);
     public PurityReport? GetByFullName(string fullname);
+
+    public List<PurityReport> GetAllReports(string start = "");
+
+    public void AddRange(IEnumerable<PurityReport> reports); 
     
-    public IEnumerable<PurityReport> GetAllUnknownMethods();
+    public IEnumerable<string> GetAllUnknownMethods();
 }
 
 public class InMemoryPurityRepo : IPurityReportRepo
@@ -27,7 +31,17 @@ public class InMemoryPurityRepo : IPurityReportRepo
         return _source.FirstOrDefault(x => fullname == x.Namespace + "." + x.Name);
     }
 
-    public IEnumerable<PurityReport> GetAllUnknownMethods()
+    public List<PurityReport> GetAllReports(string start = "")
+    {
+        throw new NotImplementedException();
+    }
+
+    public void AddRange(IEnumerable<PurityReport> reports)
+    {
+        throw new NotImplementedException();
+    }
+
+    public IEnumerable<string> GetAllUnknownMethods()
     {
         throw new NotImplementedException();
     }

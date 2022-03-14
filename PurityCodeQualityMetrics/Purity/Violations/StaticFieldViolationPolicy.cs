@@ -5,7 +5,7 @@ namespace PurityCodeQualityMetrics.Purity.Violations;
 
 public class StaticFieldViolationPolicy : IViolationPolicy
 {
-    public List<PurityViolation> Check(MethodDeclarationSyntax method, SyntaxTree tree, SemanticModel model)
+    public List<PurityViolation> Check(SyntaxNode method, SyntaxTree tree, SemanticModel model)
     {
         IEnumerable<IdentifierNameSyntax> identifiers = method
             .DescendantNodes()

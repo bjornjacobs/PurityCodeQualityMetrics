@@ -5,5 +5,5 @@ namespace PurityCodeQualityMetrics.Purity.Violations;
 
 public interface IViolationPolicy
 {
-    List<PurityViolation> Check(MethodDeclarationSyntax method, SyntaxTree tree,  SemanticModel model);
+    List<PurityViolation> Check(SyntaxNode method, SyntaxTree tree, SemanticModel model);
 }
