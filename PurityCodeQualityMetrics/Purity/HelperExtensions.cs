@@ -23,10 +23,20 @@ public static class HelperExtensions
                node.Parent is not AssignmentExpressionSyntax && node.Parent.IsNotAssignedTo();
     }
 
-    public static SyntaxNode GetMethodThatBelongsTo(this SyntaxNode node)
+    public static SyntaxNode? GetMethodThatBelongsTo(this SyntaxNode node)
     {
         if (node.Parent == null) return null;
         if (node.Parent is MethodDeclarationSyntax or LocalFunctionStatementSyntax) return node.Parent;
         return GetMethodThatBelongsTo(node.Parent);
+    }
+
+    public static string ToUniqueString(this ISymbol node)
+    {
+        return node.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+    }
+    
+    public static string GetNameWithClass(this ISymbol node)
+    {
+        return node.ContainingSymbol.Name + "." + node.Name;
     }
 }

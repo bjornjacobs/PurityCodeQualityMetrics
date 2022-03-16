@@ -1,11 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace PurityCodeQualityMetrics.Purity;
+namespace PurityCodeQualityMetrics.Purity.Storage;
 
 public class DatabaseContext : DbContext
 {
-    public DbSet<PurityReport> Reports { get; set; }
-    public DbSet<MethodDependency> Dependencies { get; set; }
+    public DbSet<PurityReport> Reports { get; set; } = null!;
+    public DbSet<MethodDependency> Dependencies { get; set; } = null!;
 
     public string DbPath { get; }
     
@@ -26,12 +26,6 @@ public class EfPurityRepo : IPurityReportRepo
     
     public PurityReport? GetByName(string name)
     {
-        int testfunc()
-        {
-            return 5;
-        }
-        
-        
         using var db = new DatabaseContext();
         db.Database.EnsureCreated();
         return db.Reports.Where(x => x.Name == name).Include(x => x.Dependencies).FirstOrDefault();
@@ -76,6 +70,6 @@ public class EfPurityRepo : IPurityReportRepo
         
         return db.Dependencies
             .Where(d => !db.Reports.Any(r => d.FullName == r.FullName))
-            .Select(x => x.FullName).ToList();
+            .Select(x => x.FullName).Distinct().ToList();
     }
 }

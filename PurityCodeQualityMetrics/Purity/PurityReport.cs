@@ -8,17 +8,24 @@ namespace PurityCodeQualityMetrics.Purity;
 
 public enum PurityViolation
 {
-    ModifiesLocalState,
-    ModifiesGlobalState,
-    ReadsGlobalState,
-    ReadsLocalState,
-    ThrowsException,
-    ModifiesParameters,
+    //Minor
+    ThrowsException = 1,
+    ModifiesParameters = 2,
+    
+    //Local
+    ModifiesLocalPrivateState = 10,
+    ReadsLocalPrivateState = 11,
+    ModifiesLocalPublicState = 12,
+    ReadsLocalPublicState = 13,
+
+    //Global
+    ReadsGlobalState = 20,
+    ModifiesGlobalState = 21,
 }
 
 public class PurityReport
 {
-    [NotMapped] public List<PurityViolation> Violations { get; set; }
+    [NotMapped] public List<PurityViolation> Violations { get; set; } = null!;
 
     public string ViolationsJson
     {
@@ -26,21 +33,21 @@ public class PurityReport
         set => Violations = JsonConvert.DeserializeObject<List<PurityViolation>>(value)!;
     }
 
-    public List<MethodDependency> Dependencies { get; set; }
+    public List<MethodDependency> Dependencies { get; set; } = null!;
 
     public bool ReturnValueIsFresh { get; set; }
     public bool IsMarkedByHand { get; set; }
     public bool IsLambda { get; set; }
 
-    public string Name { get; init; }
-    public string Namespace { get; init; }
+    public string Name { get; init; } = null!;
+    public string Namespace { get; init; } = null!;
 
-    [Key] public string FullName { get; init; }
+    [Key] public string FullName { get; init; } = null!;
 
-    public string Type { get; init; }
+    public string Type { get; init; } = null!;
 
-    [NotMapped] public List<string> ParameterTypes { get; private set; }
-    
+    [NotMapped] public List<string> ParameterTypes { get; private set; } = null!;
+
     public string ParameterTypesJson
     {
         get => JsonConvert.SerializeObject(ParameterTypes);
@@ -76,19 +83,19 @@ public class MethodDependency
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
-    public string Name { get; init; }
-    public string Namespace { get; init; }
+    public string Name { get; init; } = null!;
+    public string Namespace { get; init; } = null!;
 
-    public string FullName { get; init; }
+    public string FullName { get; init; } = null!;
 
-    public string Type { get; init; }
-    
-    [NotMapped] public List<string> ParameterTypes { get; private set; }
+    public string Type { get; init; } = null!;
+
+    [NotMapped] public List<string> ParameterTypes { get; private set; } = null!;
 
     public string ParameterTypesJson
     {
         get => JsonConvert.SerializeObject(ParameterTypes);
-        set => ParameterTypes = JsonConvert.DeserializeObject<List<string>>(value);
+        set => ParameterTypes = JsonConvert.DeserializeObject<List<string>>(value)!;
     }
 
     public bool ShouldBeFresh { get; init; }
@@ -101,16 +108,16 @@ public class MethodDependency
     {
     }
 
-    public MethodDependency(string Name, string Namespace, string type, List<string> ParameterTypes, bool ShouldBeFresh,
-        bool DependsOnReturnToBeFresh, bool isInterface)
+    public MethodDependency(string name, string @namespace, string type, List<string> parameterTypes, bool shouldBeFresh,
+        bool dependsOnReturnToBeFresh, bool isInterface)
     {
-        this.Name = Name;
-        this.Namespace = Namespace;
-        this.ParameterTypes = ParameterTypes;
-        this.Type = type;
-        this.ShouldBeFresh = ShouldBeFresh;
-        this.DependsOnReturnToBeFresh = DependsOnReturnToBeFresh;
-        this.FullName = $"{Namespace}.{Name}";
+        Name = name;
+        Namespace = @namespace;
+        ParameterTypes = parameterTypes;
+        Type = type;
+        ShouldBeFresh = shouldBeFresh;
+        DependsOnReturnToBeFresh = dependsOnReturnToBeFresh;
+        FullName = $"{@namespace}.{name}";
         IsInterface = isInterface;
     }
 }

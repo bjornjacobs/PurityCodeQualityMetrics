@@ -5,32 +5,46 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
+using Microsoft.Extensions.Logging;
 using PurityCodeQualityMetrics.Purity.Violations;
 
 namespace PurityCodeQualityMetrics.Purity;
 
 public class PurityAnalyzer
 {
+    private ILogger _logger;
+    
     private readonly List<IViolationPolicy> _violationsPolicies = new List<IViolationPolicy>
     {
         new ThrowsExceptionViolationPolicy(),
         new StaticFieldViolationPolicy(),
+        new LocalPurityPolicy(),
+        new ParameterViolationPolicy()
     };
+
+    public PurityAnalyzer(ILogger logger)
+    {
+        _logger = logger;
+    }
 
     public async Task<IList<PurityReport>> GeneratePurityReports(string project)
     {
+        _logger.LogInformation("Starting compilation");
         using var workspace = MSBuildWorkspace.Create();
         workspace.WorkspaceFailed += (o, e) => throw new Exception(e.ToString());
         var currentProject = await workspace.OpenProjectAsync(project);
 
         if (!currentProject.MetadataReferences.Any())
             throw new Exception("References are empty: this usually means that MsBuild didn't load correctly");
+        
+        _logger.LogInformation($"Loaded project: {project}");
         var compilation = await currentProject.GetCompilationAsync();
 
         if (compilation == null) throw new Exception("Could not compile project");
-
         var errors = compilation.GetDiagnostics().Where(n => n.Severity == DiagnosticSeverity.Error).ToList();
-
+        _logger.LogInformation($"Project compiled with {errors.Count} errors");
+        errors.ForEach(x => _logger.LogDebug(x.Location + " " + x.GetMessage()));
+        
         return ExtractMethodReports(compilation);
     }
 
@@ -77,7 +91,7 @@ public class PurityAnalyzer
         
         //Get symbols from the model. Some casting is needed because both local functions and methods definitions need to work 
         IMethodSymbol methodSymbol = (IMethodSymbol) model.GetDeclaredSymbol(m)!;
-        ISymbol? lambdaSymbol = isLambda ? model.GetSymbolInfo(l).Symbol : null;
+        ISymbol? lambdaSymbol = isLambda ? model.GetSymbolInfo(l!).Symbol : null;
         if (methodSymbol == null) throw new Exception("Symbol could not be found in model"); //Should never happen
 
         //Use lambda if that one is defined
@@ -87,22 +101,22 @@ public class PurityAnalyzer
         if (workingSymbol.MethodKind == MethodKind.LocalFunction)
         {
             var parent = workingSymbol.ContainingSymbol;
-            name = parent.Name + ".<local>." + workingSymbol.Name;
+            name = parent.GetNameWithClass() + ".<local>." + workingSymbol.Name;
         }
         else if (isLambda)
         {
-            name = methodSymbol.Name + ".<lambda>." + counter;
+            name =methodSymbol.GetNameWithClass() + ".<lambda>." + counter;
         }
         else
         {
-            name = methodSymbol.Name;
+            name = methodSymbol.GetNameWithClass();
         }
         
         var report = new PurityReport(
             name,
-            workingSymbol.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
-            workingSymbol.ReturnType.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
-            workingSymbol.Parameters.Select(x => x.Type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat))
+            workingSymbol.ContainingNamespace.ToUniqueString(),
+            workingSymbol.ReturnType.ToUniqueString(),
+            workingSymbol.Parameters.Select(x => x.Type.ToUniqueString())
                 .ToList());
 
         report.IsLambda = isLambda;
@@ -123,15 +137,30 @@ public class PurityAnalyzer
         var invocations = m.DescendantNodes().OfType<InvocationExpressionSyntax>().Select(c =>
         {
             var symbol = model.GetSymbolInfo(c).Symbol as IMethodSymbol;
+            if (symbol == null)
+            {
+                _logger.LogWarning($"Could not find symbol for {c.ToString()}");
+                return new MethodDependency(c.ToString(), "UNKNOWN", string.Empty, new List<string>(), false, false, false);
+            }
+
             
-            return symbol == null
-                ? new MethodDependency(c.ToString(), "UNKNOWN", string.Empty, new List<string>(), false, false, false)
-                : new MethodDependency(
-                    symbol.Name,
-                    symbol.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
-                    symbol.ReturnType.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
+            string name;
+            if (symbol.MethodKind == MethodKind.LocalFunction)
+            {
+                var parent = symbol.ContainingSymbol;
+                name = parent.GetNameWithClass() + ".<local>." + symbol.Name;
+            }
+            else
+            {
+                name = symbol.GetNameWithClass();
+            }
+            
+            return new MethodDependency(
+                    name,
+                    symbol.ContainingNamespace.ToUniqueString(),
+                    symbol.ReturnType.ToUniqueString(),
                     symbol.Parameters.Select(x =>
-                            x.Type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat))
+                            x.Type.ToUniqueString())
                         .ToList(), false, false, symbol.IsPartialDefinition);
         }).ToList();
 
@@ -139,20 +168,15 @@ public class PurityAnalyzer
         var lambdas = m.DescendantNodes().OfType<LambdaExpressionSyntax>().Select(l =>
         {
             var symbol = model.GetSymbolInfo(l).Symbol as IMethodSymbol;
-            if (m == null)
-            {
-                
-            }
+            var parent = model.GetDeclaredSymbol(l.GetMethodThatBelongsTo()!) as IMethodSymbol;
             
-            var parent = model.GetDeclaredSymbol(l.GetMethodThatBelongsTo()) as IMethodSymbol;
-            
-            
+
             return  new MethodDependency(
-                parent!.Name + ".<lambda>." + counter++,
-                symbol!.ContainingNamespace.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
-                symbol.ReturnType.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat),
+                parent!.GetNameWithClass() + ".<lambda>." + counter++,
+                symbol!.ContainingNamespace.ToUniqueString(),
+                symbol.ReturnType.ToUniqueString(),
                 symbol.Parameters.Select(x =>
-                        x.Type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat))
+                        x.Type.ToUniqueString())
                     .ToList(), false, false, symbol.IsPartialDefinition);
         });
 
