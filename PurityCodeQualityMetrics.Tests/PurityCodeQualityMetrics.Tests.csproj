@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Moq" Version="4.17.2" />
         <PackageReference Include="NuGet.Frameworks" Version="6.1.0" /> <!--NEEDED OR ELSE MSBUILD DOESN'T WORK-->
 
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.2.0-preview-20220131-20" />

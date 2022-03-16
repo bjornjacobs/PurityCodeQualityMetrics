@@ -3,7 +3,7 @@
 public class GloballyImpureTestClass
 {
     private static int _global = 9;
-    
+
     public int ModifyAndReturn()
     {
         _global = 16;

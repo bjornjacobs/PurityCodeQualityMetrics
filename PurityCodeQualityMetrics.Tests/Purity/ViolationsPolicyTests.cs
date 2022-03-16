@@ -10,7 +10,7 @@ using static PurityCodeQualityMetrics.Tests.Purity.Helper;
 
 namespace PurityCodeQualityMetrics.Tests.Purity;
 
-public class PurityAnalyzerTests
+public class ViolationsPolicyTests
 {
     private static Mock<ILogger> _logger = new Mock<ILogger>();
     private readonly PurityAnalyzer _sut = new(_logger.Object);
@@ -48,7 +48,10 @@ public class PurityAnalyzerTests
     public static IEnumerable<object[]> LocallyImpureTestData =>
         new List<object[]>
         {
-            GenerateTestData(nameof(LocallyImpureTestClass.LocallyImpure), PurityViolation.ModifiesLocalState, PurityViolation.ReadsLocalState),
+            GenerateTestData(nameof(LocallyImpureTestClass.LocallyImpure), PurityViolation.ModifiesLocalPrivateState, PurityViolation.ReadsLocalPrivateState),
+            GenerateTestData(nameof(LocallyImpureTestClass.LocallYImpure2), PurityViolation.ModifiesLocalPrivateState),
+            GenerateTestData(nameof(LocallyImpureTestClass.LocallYImpure3), PurityViolation.ReadsLocalPrivateState, PurityViolation.ReadsLocalPrivateState),
+            GenerateTestData(nameof(LocallyImpureTestClass.NoLocalImpure), PurityViolation.ReadsGlobalState),
         };
 
     [Theory]

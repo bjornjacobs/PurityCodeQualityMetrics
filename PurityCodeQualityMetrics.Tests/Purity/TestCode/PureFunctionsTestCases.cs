@@ -22,6 +22,6 @@ public class PureFunctionsTestCases
 
     public int PureFunctionLambda()
     {
-        return new List<int> {5, 5, 5}.Select(x => x * x).Aggregate((a,b) => a + b);
+        return new List<int> {5, 5, 5}.Select(x => x * x).Aggregate((a, b) => a + b);
     }
 }

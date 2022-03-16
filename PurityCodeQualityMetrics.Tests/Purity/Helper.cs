@@ -10,15 +10,15 @@ public class Helper
     public static async Task<IList<PurityReport>> GenerateReports(PurityAnalyzer _sut)
     {
         if (_cache != null) return _cache;
-        
-        if(!MSBuildLocator.IsRegistered)
+
+        if (!MSBuildLocator.IsRegistered)
             MSBuildLocator.RegisterDefaults();
-        
+
         //Load itself to get reports for testclasses
         var dir = Directory.GetCurrentDirectory();
         const string projectDir = "PurityCodeQualityMetrics";
         const string testPath = "/PurityCodeQualityMetrics.Tests/PurityCodeQualityMetrics.Tests.csproj";
-        
+
         var testProject = dir.Split(projectDir).First() + projectDir + testPath;
         _cache = await _sut.GeneratePurityReports(testProject);
         return _cache;
@@ -28,9 +28,8 @@ public class Helper
     {
         return new object[]
         {
-            methodName,   
+            methodName,
             violations.ToList()
         };
     }
-
 }
