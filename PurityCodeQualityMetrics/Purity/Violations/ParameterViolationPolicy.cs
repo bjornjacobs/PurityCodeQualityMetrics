@@ -20,4 +20,6 @@ public class ParameterViolationPolicy : IViolationPolicy
             .Select(x =>  PurityViolation.ModifiesParameters) //Todo: check if return type is getter/ read operation
             .ToList();
     }
+
+
 }

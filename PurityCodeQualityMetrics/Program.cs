@@ -8,15 +8,17 @@ using PurityCodeQualityMetrics.Purity.Storage;
 
 public class Program
 {
-    static async Task Main(string[] args)
-    {
+    static async Task Main(string[] args) =>
         await Parser.Default.ParseArguments<CommandLineOptions>(args)
             .WithParsedAsync(async o =>
             {
+                await using var db = new DatabaseContext();
+                await db.Database.EnsureDeletedAsync();
+                
                 MSBuildLocator.RegisterDefaults();
                 o.Project =
                     @"C:\Users\BjornJ\dev\PurityCodeQualityMetrics\PurityCodeQualityMetrics\PurityCodeQualityMetrics.csproj";
-                o.Project = @"C:\Users\BjornJ\dev\PureTest\PureTest.csproj";
+              //  o.Project = @"C:\Users\BjornJ\dev\PureTest\PureTest.csproj";
                 //   o.Project = @"C:\Users\BjornJ\dev\runtime\src\libraries\Microsoft.Extensions.Logging\src\Microsoft.Extensions.Logging.csproj";
 
                 var factory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug));
@@ -25,11 +27,8 @@ public class Program
                 var purityReports = await analyzer.GeneratePurityReports(o.Project);
                 IPurityReportRepo repo = new EfPurityRepo();
                 repo.AddRange(purityReports);
-                //PrintOverview(repo);
-
+                PrintOverview(repo);
             });
-
-    }
 
 
     static void PrintOverview(IPurityReportRepo repo)
@@ -58,18 +57,16 @@ public class Program
             {
                 Console.WriteLine(" No dependencies");
             }
-
-            var unknown = repo.GetAllUnknownMethods().OrderBy(x => x).ToList();
-            if (unknown.Any())
-            {
-                Console.WriteLine($" Unknown methods {unknown.Count}:");
-                unknown.ForEach(x => Console.WriteLine($"  - {x}"));
-            }
-            else
-            {
-                Console.WriteLine(" All methods are known");
-            }
-
+        }
+        var unknown = repo.GetAllUnknownMethods().OrderBy(x => x).ToList();
+        if (unknown.Any())
+        {
+            Console.WriteLine($" Unknown methods {unknown.Count}:");
+            unknown.ForEach(x => Console.WriteLine($"  - {x}"));
+        }
+        else
+        {
+            Console.WriteLine(" All methods are known");
         }
     }
 }

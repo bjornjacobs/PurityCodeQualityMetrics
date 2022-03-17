@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
@@ -6,6 +7,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.Extensions.Logging;
+using PurityCodeQualityMetrics.Purity.Util;
 using PurityCodeQualityMetrics.Purity.Violations;
 
 namespace PurityCodeQualityMetrics.Purity;
@@ -13,7 +15,7 @@ namespace PurityCodeQualityMetrics.Purity;
 public class PurityAnalyzer
 {
     private ILogger _logger;
-    
+
     private readonly List<IViolationPolicy> _violationsPolicies = new List<IViolationPolicy>
     {
         new ThrowsExceptionViolationPolicy(),
@@ -36,7 +38,7 @@ public class PurityAnalyzer
 
         if (!currentProject.MetadataReferences.Any())
             throw new Exception("References are empty: this usually means that MsBuild didn't load correctly");
-        
+
         _logger.LogInformation($"Loaded project: {project}");
         var compilation = await currentProject.GetCompilationAsync();
 
@@ -44,7 +46,7 @@ public class PurityAnalyzer
         var errors = compilation.GetDiagnostics().Where(n => n.Severity == DiagnosticSeverity.Error).ToList();
         _logger.LogInformation($"Project compiled with {errors.Count} errors");
         errors.ForEach(x => _logger.LogDebug(x.Location + " " + x.GetMessage()));
-        
+
         return ExtractMethodReports(compilation);
     }
 
@@ -52,76 +54,26 @@ public class PurityAnalyzer
     {
         //Each syntax tree represents a file
         return compilation.SyntaxTrees.SelectMany(tree =>
-        {
-            var model = compilation.GetSemanticModel(tree);
-            List<CSharpSyntaxNode> methodDefinitions = tree.GetRoot()
-                .DescendantNodes()
-                .OfType<MethodDeclarationSyntax>()
-                .Cast<CSharpSyntaxNode>()
-                .ToList();
-            
-            var localFunctions = tree.GetRoot()
-                .DescendantNodes()
-                .OfType<LocalFunctionStatementSyntax>()
-                .Cast<CSharpSyntaxNode>()
-                .ToList();
-
-            var allFunctionAndMethods = methodDefinitions.Concat(localFunctions).ToList();
-
-            var lambdaReports = allFunctionAndMethods
-                .SelectMany(x =>
-                {
-                    int counter = 0; //Used for giving lambda's unique names
-                    return x.DescendantNodes().OfType<LambdaExpressionSyntax>()
-                        .Select(l => ExtractReportFromDeclaration(x, l, counter++, model));
-                }).ToList();
-
-            return allFunctionAndMethods
-                .Select(m => ExtractReportFromDeclaration(m, null, 0, model))
-                .Concat(lambdaReports);
-        }).ToList();
+            tree.GetAllMethods().Select(m => ExtractReportFromDeclaration(m, compilation.GetSemanticModel(tree)))
+        ).ToList();
     }
 
 
-    private PurityReport ExtractReportFromDeclaration(SyntaxNode m, LambdaExpressionSyntax? l, int counter,
-        SemanticModel model)
+    private PurityReport ExtractReportFromDeclaration(SyntaxNode m, SemanticModel model)
     {
-        //Determine if this method is called in the context of a lambda or normal method
-        var isLambda = l != null; 
-        
-        //Get symbols from the model. Some casting is needed because both local functions and methods definitions need to work 
-        IMethodSymbol methodSymbol = (IMethodSymbol) model.GetDeclaredSymbol(m)!;
-        ISymbol? lambdaSymbol = isLambda ? model.GetSymbolInfo(l!).Symbol : null;
-        if (methodSymbol == null) throw new Exception("Symbol could not be found in model"); //Should never happen
+        var workingSymbol = m.GetMethodSymbol(model);
 
-        //Use lambda if that one is defined
-        IMethodSymbol workingSymbol = isLambda ? (IMethodSymbol) lambdaSymbol! : methodSymbol;
-
-        string name;
-        if (workingSymbol.MethodKind == MethodKind.LocalFunction)
-        {
-            var parent = workingSymbol.ContainingSymbol;
-            name = parent.GetNameWithClass() + ".<local>." + workingSymbol.Name;
-        }
-        else if (isLambda)
-        {
-            name =methodSymbol.GetNameWithClass() + ".<lambda>." + counter;
-        }
-        else
-        {
-            name = methodSymbol.GetNameWithClass();
-        }
-        
         var report = new PurityReport(
-            name,
+            workingSymbol.GetUniqueMethodName(m),
             workingSymbol.ContainingNamespace.ToUniqueString(),
             workingSymbol.ReturnType.ToUniqueString(),
             workingSymbol.Parameters.Select(x => x.Type.ToUniqueString())
                 .ToList());
 
-        report.IsLambda = isLambda;
-        report.Violations.AddRange(ExtractPurityViolations(isLambda ? l! : m, model));
-        report.Dependencies.AddRange(ExtractMethodDependencies(isLambda ? l! : m, model));
+        report.ReturnValueIsFresh = m.IsReturnFresh(model);
+        report.MethodType = workingSymbol.MethodKind.ToMethodType();
+        report.Violations.AddRange(ExtractPurityViolations(m, model));
+        report.Dependencies.AddRange(ExtractMethodDependencies(m, model));
         return report;
     }
 
@@ -134,52 +86,26 @@ public class PurityAnalyzer
 
     private List<MethodDependency> ExtractMethodDependencies(SyntaxNode m, SemanticModel model)
     {
-        var invocations = m.DescendantNodes().OfType<InvocationExpressionSyntax>().Select(c =>
+        var invocations = m.DescendantNodes().OfType<InvocationExpressionSyntax>().Cast<SyntaxNode>();
+        var lambdas = m.DescendantNodes().OfType<LambdaExpressionSyntax>().Cast<SyntaxNode>();
+
+        return lambdas.Concat(invocations).Select( c =>
         {
             var symbol = model.GetSymbolInfo(c).Symbol as IMethodSymbol;
             if (symbol == null)
             {
                 _logger.LogWarning($"Could not find symbol for {c.ToString()}");
-                return new MethodDependency(c.ToString(), "UNKNOWN", string.Empty, new List<string>(), false, false, false);
+                return new MethodDependency(c.ToString(), Scoping.Field);
             }
 
-            
-            string name;
-            if (symbol.MethodKind == MethodKind.LocalFunction)
-            {
-                var parent = symbol.ContainingSymbol;
-                name = parent.GetNameWithClass() + ".<local>." + symbol.Name;
-            }
-            else
-            {
-                name = symbol.GetNameWithClass();
-            }
-            
-            return new MethodDependency(
-                    name,
-                    symbol.ContainingNamespace.ToUniqueString(),
-                    symbol.ReturnType.ToUniqueString(),
-                    symbol.Parameters.Select(x =>
-                            x.Type.ToUniqueString())
-                        .ToList(), false, false, symbol.IsPartialDefinition);
-        }).ToList();
-
-        int counter = 0;
-        var lambdas = m.DescendantNodes().OfType<LambdaExpressionSyntax>().Select(l =>
-        {
-            var symbol = model.GetSymbolInfo(l).Symbol as IMethodSymbol;
-            var parent = model.GetDeclaredSymbol(l.GetMethodThatBelongsTo()!) as IMethodSymbol;
-            
-
-            return  new MethodDependency(
-                parent!.GetNameWithClass() + ".<lambda>." + counter++,
-                symbol!.ContainingNamespace.ToUniqueString(),
+            return new MethodDependency(symbol.GetUniqueMethodName(c),
+                symbol.ContainingNamespace.ToUniqueString(),
                 symbol.ReturnType.ToUniqueString(),
-                symbol.Parameters.Select(x =>
-                        x.Type.ToUniqueString())
-                    .ToList(), false, false, symbol.IsPartialDefinition);
-        });
-
-        return lambdas.Concat(invocations).ToList();
+                symbol.Parameters.Select(x => x.Type.ToUniqueString()).ToList(),
+                symbol.MethodKind.ToMethodType(),
+                symbol.IsPartialDefinition,
+                Scoping.Field,
+                false);
+        }).ToList();
     }
 }

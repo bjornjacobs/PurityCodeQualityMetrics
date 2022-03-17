@@ -48,9 +48,9 @@ public class ViolationsPolicyTests
     public static IEnumerable<object[]> LocallyImpureTestData =>
         new List<object[]>
         {
-            GenerateTestData(nameof(LocallyImpureTestClass.LocallyImpure), PurityViolation.ModifiesLocalPrivateState, PurityViolation.ReadsLocalPrivateState),
-            GenerateTestData(nameof(LocallyImpureTestClass.LocallYImpure2), PurityViolation.ModifiesLocalPrivateState),
-            GenerateTestData(nameof(LocallyImpureTestClass.LocallYImpure3), PurityViolation.ReadsLocalPrivateState, PurityViolation.ReadsLocalPrivateState),
+            GenerateTestData(nameof(LocallyImpureTestClass.LocallyImpure), PurityViolation.ModifiesLocalState, PurityViolation.ReadsLocalState),
+            GenerateTestData(nameof(LocallyImpureTestClass.LocallYImpure2), PurityViolation.ModifiesLocalState),
+            GenerateTestData(nameof(LocallyImpureTestClass.LocallYImpure3), PurityViolation.ReadsLocalState, PurityViolation.ReadsLocalState),
             GenerateTestData(nameof(LocallyImpureTestClass.NoLocalImpure), PurityViolation.ReadsGlobalState),
         };
 

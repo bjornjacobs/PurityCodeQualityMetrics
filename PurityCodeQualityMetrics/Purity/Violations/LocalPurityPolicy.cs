@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using PurityCodeQualityMetrics.Purity.Util;
 
 namespace PurityCodeQualityMetrics.Purity.Violations;
 
@@ -17,7 +18,7 @@ public class LocalPurityPolicy : IViolationPolicy
                 
                 return symbol != null && symbol.Kind == SymbolKind.Field & !symbol.IsStatic;
             })
-            .Select(x => x.IsAssignedTo() ? PurityViolation.ModifiesLocalPrivateState : PurityViolation.ReadsLocalPrivateState)
+            .Select(x => x.IsAssignedTo() ? PurityViolation.ModifiesLocalState : PurityViolation.ReadsLocalState)
             .ToList();
     }
 }

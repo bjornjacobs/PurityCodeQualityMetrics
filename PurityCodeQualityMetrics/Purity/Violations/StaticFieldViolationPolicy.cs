@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using PurityCodeQualityMetrics.Purity.Util;
 
 namespace PurityCodeQualityMetrics.Purity.Violations;
 
