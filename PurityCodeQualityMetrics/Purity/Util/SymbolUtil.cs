@@ -17,6 +17,7 @@ public static class SymbolUtil
             MethodKind.LocalFunction =>  symbol.ContainingSymbol.GetNameWithClass() + ".<local>." + symbol.Name,
             MethodKind.AnonymousFunction => symbol.ContainingSymbol.GetNameWithClass() + ".<lambda>." + node.GetLambdaCount(),
             MethodKind.ReducedExtension => symbol.GetNameWithClass(),
+            MethodKind.DelegateInvoke => symbol.GetNameWithClass(),
             _ => throw new NotImplementedException()
         };
     }

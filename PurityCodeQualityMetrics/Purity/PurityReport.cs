@@ -19,6 +19,8 @@ public enum PurityViolation
     //Global
     ReadsGlobalState = 20,
     ModifiesGlobalState = 21,
+    
+    UnknownMethod = 30,
 }
 
 public enum Scoping

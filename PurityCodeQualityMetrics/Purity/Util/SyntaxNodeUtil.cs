@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace PurityCodeQualityMetrics.Purity.Util;
@@ -30,7 +31,8 @@ public static class SyntaxNodeUtil
         {
             LambdaExpressionSyntax => (IMethodSymbol) model.GetSymbolInfo(node).Symbol!,
             LocalFunctionStatementSyntax =>(IMethodSymbol) model.GetDeclaredSymbol(node)!,
-            MethodDeclarationSyntax => (IMethodSymbol) model.GetDeclaredSymbol(node)!
+            MethodDeclarationSyntax => (IMethodSymbol) model.GetDeclaredSymbol(node)!,
+            _ => throw new NotImplementedException()
         };
     }
     
@@ -42,5 +44,23 @@ public static class SyntaxNodeUtil
             return node.SyntaxTree.GetRoot().DescendantNodes().OfType<LambdaExpressionSyntax>().ToList().FindIndex(node.IsEquivalentTo) + 1000; //Think of a better solution
         
         return method.DescendantNodes().OfType<LambdaExpressionSyntax>().ToList().FindIndex(node.IsEquivalentTo);
+    }
+    
+    public static List<CSharpSyntaxNode> GetAllMethods(this SyntaxTree tree)
+    {
+        var methods = tree.GetRoot()
+            .DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .Cast<CSharpSyntaxNode>();
+
+        var local = tree.GetRoot().DescendantNodes()
+            .OfType<LocalFunctionStatementSyntax>()
+            .Cast<CSharpSyntaxNode>();
+        
+        var lamda = tree.GetRoot().DescendantNodes()
+            .OfType<LambdaExpressionSyntax>()
+            .Cast<CSharpSyntaxNode>();
+
+        return local.Concat(methods).Concat(lamda).ToList();
     }
 }

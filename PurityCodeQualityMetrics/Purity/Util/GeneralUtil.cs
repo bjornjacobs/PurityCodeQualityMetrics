@@ -12,6 +12,7 @@ public static class GeneralUtil
             MethodKind.Ordinary => MethodType.Method,
             MethodKind.LocalFunction => MethodType.Local,
             MethodKind.ReducedExtension => MethodType.Method, //Extension
+            MethodKind.DelegateInvoke => MethodType.Local, //Extension
             var kind => throw new NotImplementedException($"MethodKind of {kind} is not implemented")
         };
     }

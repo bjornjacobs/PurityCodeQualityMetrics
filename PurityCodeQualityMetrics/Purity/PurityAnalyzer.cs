@@ -29,7 +29,7 @@ public class PurityAnalyzer
         _logger = logger;
     }
 
-    public async Task<IList<PurityReport>> GeneratePurityReports(string project)
+    public async Task<List<PurityReport>> GeneratePurityReports(string project)
     {
         _logger.LogInformation("Starting compilation");
         using var workspace = MSBuildWorkspace.Create();
@@ -45,12 +45,12 @@ public class PurityAnalyzer
         if (compilation == null) throw new Exception("Could not compile project");
         var errors = compilation.GetDiagnostics().Where(n => n.Severity == DiagnosticSeverity.Error).ToList();
         _logger.LogInformation($"Project compiled with {errors.Count} errors");
-        errors.ForEach(x => _logger.LogDebug(x.Location + " " + x.GetMessage()));
+        errors.ForEach(x => _logger.LogDebug("[COMPILER_ERROR] " + x.Location + " " + x.GetMessage()));
 
         return ExtractMethodReports(compilation);
     }
 
-    private IList<PurityReport> ExtractMethodReports(Compilation compilation)
+    private List<PurityReport> ExtractMethodReports(Compilation compilation)
     {
         //Each syntax tree represents a file
         return compilation.SyntaxTrees.SelectMany(tree =>
@@ -103,7 +103,7 @@ public class PurityAnalyzer
                 symbol.ReturnType.ToUniqueString(),
                 symbol.Parameters.Select(x => x.Type.ToUniqueString()).ToList(),
                 symbol.MethodKind.ToMethodType(),
-                symbol.IsPartialDefinition,
+                symbol.IsAbstract,
                 Scoping.Field,
                 false);
         }).ToList();
