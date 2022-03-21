@@ -55,11 +55,13 @@ public class ConsoleInterface
         }
     }
 
-    public static void PrintOverview(List<PurityScore> scores)
+    public static void PrintOverview(List<PurityScore> scores, bool verbose)
     {
         foreach (var purityScore in scores)
         {
             Console.WriteLine($"{purityScore.Report.Name}: {purityScore.Puritylevel.ToString()} ({purityScore.Violations.Count})");
+            if(verbose)
+                purityScore.Violations.ForEach(x => Console.WriteLine($" - {x}"));
         }
     }
 }

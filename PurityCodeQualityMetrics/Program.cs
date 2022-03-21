@@ -31,7 +31,7 @@ public class Program
                 var repo = new EfPurityRepo();
                 repo.AddRange(purityReports);
                 var scores = calculator.CalculateScores(repo.GetAllReports());
-                ConsoleInterface.PrintOverview(scores);
+                ConsoleInterface.PrintOverview(scores, false);
             });
     }
 }

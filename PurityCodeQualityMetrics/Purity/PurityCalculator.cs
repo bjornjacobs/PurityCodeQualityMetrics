@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using StronglyConnectedComponents;
 
 namespace PurityCodeQualityMetrics.Purity;
 
@@ -14,43 +15,48 @@ public class PurityCalculator
 
     public List<PurityScore> CalculateScores(List<PurityReport> reports)
     {
-        return reports.Select(x =>  CalculateScore(x, name => reports.FirstOrDefault(x => x.FullName == name))).ToList();
+        _logger.LogInformation("Starting calculating scores");
+        //Calculate the unkown methods: e.g. methods that we don't have a purity report on
+        var allDependencies = reports.SelectMany(x => x.Dependencies).DistinctBy(x => x.FullName);
+        var unknowns = allDependencies.Where(d => reports.All(r => d.FullName != r.FullName))
+            .Select(x => x.FullName).ToList();
+
+        _logger.LogInformation($"Program has {unknowns.Count} unknown methods");
+
+        //Calculate the strongly connected components using Tarjan's algorithm
+        //This solves the problem with recursion and cycles in de call graph inspired by the Hindley–Milner type system
+        var graph = reports.Select(x => x.FullName).Concat(unknowns).ToArray();
+
+        var components = graph.DetectCycles(arg =>
+            reports.FirstOrDefault(x => x.FullName == arg)?.Dependencies.Select(x => x.FullName) ?? new List<string>()
+        );
+        
+        _logger.LogInformation($"Program has {components.Count} strongly connected components");
+        
+        //Calculate the purity per component
+        var finder = (string name) => reports.FirstOrDefault(x => x.FullName == name);
+        return components.SelectMany(x => CalculateScore(x.Select(finder).Where(x => x != null).ToList()!, finder)).ToList();
     }
 
-    private PurityScore CalculateScore(PurityReport report, Func<string, PurityReport?> getReport)
+    private List<PurityScore> CalculateScore(List<PurityReport> component, Func<string, PurityReport?> getReport)
     {
-        if(report == null) return PurityScore.Unknown();
-        
-        if (_table.TryGetValue(report.FullName, out var val))
+        var violations = component.SelectMany(x => x.Violations).ToList();
+        var scores = component.Select(x => new PurityScore(x, violations)).ToList();
+
+        //Calculates dependency outside of component 
+        foreach (var score in scores)
         {
-            return val;
+            score.Violations.AddRange(
+                score.Report.Dependencies
+                    .Where(x => component.All(y => x.FullName != y.FullName))
+                    .Select(x => _table.GetValueOrDefault(x.FullName))
+                    .SelectMany(x =>
+                        x == null ? new List<PurityViolation> {PurityViolation.UnknownMethod} : x.Violations)
+                    .ToList()
+            );
+            _table.Add(score.Report.FullName, score);
         }
-        var score = new PurityScore(report);
-        score.Violations.AddRange(report.Violations);
-        _table.Add(report.FullName, score);
-        
-        var dependencies = report.Dependencies.Select(x => getReport(x.FullName)).Select(x => CalculateScore(x, getReport)).ToList();
-        score.Violations.AddRange(dependencies.SelectMany(x=>x.Violations).ToList());
-        score.Puritylevel = CalculateLevel(score.Violations);
-        return score;
-    }
 
-    private Puritylevel CalculateLevel(List<PurityViolation> violations)
-    {
-        if (violations.Contains(PurityViolation.ReadsGlobalState) ||
-            violations.Contains(PurityViolation.ModifiesGlobalState))
-            return Puritylevel.Impure;
-        
-        if (violations.Contains(PurityViolation.ModifiesLocalState) ||
-            violations.Contains(PurityViolation.ReadsLocalState))
-            return Puritylevel.LocallyImpure;
-        
-        if (violations.Contains(PurityViolation.ModifiesParameters))
-            return Puritylevel.ParameteclyImpure;
-        
-        if (violations.Contains(PurityViolation.ThrowsException))
-            return Puritylevel.ThrowsException;
-
-        return Puritylevel.Pure;
+        return scores;
     }
 }
