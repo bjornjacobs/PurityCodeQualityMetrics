@@ -1,7 +1,5 @@
-﻿using System.Collections.Immutable;
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
 using Newtonsoft.Json;
 
 namespace PurityCodeQualityMetrics.Purity;
@@ -36,6 +34,8 @@ public enum MethodType
     Lambda,
     Local,
     Method,
+    Getter,
+    Setter,
     Global
 }
 
@@ -50,10 +50,9 @@ public class PurityReport
     public bool IsMarkedByHand { get; set; }
     public MethodType MethodType { get; set; }
     
-    [NotMapped] public List<string> ParameterTypes { get; private set; } = null!;
+    [NotMapped] public List<string> ParameterTypes { get; set; } = null!;
     
-    [NotMapped] 
-    public List<PurityViolation> Violations { get; set; }
+    [NotMapped] public List<PurityViolation> Violations { get; set; }
     public List<MethodDependency> Dependencies { get; set; }
 
 
@@ -90,7 +89,7 @@ public class PurityReport
     public string ParameterTypesJson
     {
         get => JsonConvert.SerializeObject(ParameterTypes);
-        set => ParameterTypes = JsonConvert.DeserializeObject<List<string>>(value)!;
+        set { ParameterTypes = JsonConvert.DeserializeObject<List<string>>(value)!; }
     }
 }
 
@@ -102,14 +101,16 @@ public class MethodDependency
     public string FullName { get; init; } = null!;
     public string ReturnType { get; init; } = null!;
     [NotMapped] public List<string> ParameterTypes { get; private set; } = null!;
-    
     public MethodType MethodType { get; set; }
     public bool IsInterface { get; init; }
+    
+    public List<MethodDependency> Overrides { get; set; }
 
 
     //Dependency information
     public Scoping Scoping { get; private set; }
-    public bool ReturnShouldBeFresh { get; init; }
+    public bool ReturnShouldBeFresh { get; set; }
+    public bool FreshDependsOnMethodReturnIsFresh { get; set; }
 
     public MethodDependency()
     {

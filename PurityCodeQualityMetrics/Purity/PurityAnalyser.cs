@@ -5,6 +5,7 @@ using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.Extensions.Logging;
 using PurityCodeQualityMetrics.Purity.Util;
@@ -12,7 +13,7 @@ using PurityCodeQualityMetrics.Purity.Violations;
 
 namespace PurityCodeQualityMetrics.Purity;
 
-public class PurityAnalyzer
+public class PurityAnalyser
 {
     private ILogger _logger;
 
@@ -24,7 +25,7 @@ public class PurityAnalyzer
         new ParameterViolationPolicy()
     };
 
-    public PurityAnalyzer(ILogger logger)
+    public PurityAnalyser(ILogger logger)
     {
         _logger = logger;
     }
@@ -32,6 +33,8 @@ public class PurityAnalyzer
     public async Task<List<PurityReport>> GeneratePurityReports(string project)
     {
         _logger.LogInformation("Starting compilation");
+        if(!MSBuildLocator.IsRegistered)
+            MSBuildLocator.RegisterDefaults();
         using var workspace = MSBuildWorkspace.Create();
         workspace.WorkspaceFailed += (o, e) => throw new Exception(e.ToString());
         var currentProject = await workspace.OpenProjectAsync(project);
@@ -47,19 +50,19 @@ public class PurityAnalyzer
         _logger.LogInformation($"Project compiled with {errors.Count} errors");
         errors.ForEach(x => _logger.LogDebug("[COMPILER_ERROR] " + x.Location + " " + x.GetMessage()));
 
-        return ExtractMethodReports(compilation);
+        return ExtractMethodReports(compilation, currentProject.Solution);
     }
 
-    private List<PurityReport> ExtractMethodReports(Compilation compilation)
+    private List<PurityReport> ExtractMethodReports(Compilation compilation, Solution solution)
     {
         //Each syntax tree represents a file
         return compilation.SyntaxTrees.SelectMany(tree =>
-            tree.GetAllMethods().Select(m => ExtractReportFromDeclaration(m, compilation.GetSemanticModel(tree)))
+            tree.GetAllMethods().Select(m => ExtractReportFromDeclaration(m, compilation.GetSemanticModel(tree), solution))
         ).ToList();
     }
 
 
-    private PurityReport ExtractReportFromDeclaration(SyntaxNode m, SemanticModel model)
+    private PurityReport ExtractReportFromDeclaration(SyntaxNode m, SemanticModel model, Solution solution)
     {
         var workingSymbol = m.GetMethodSymbol(model);
 
@@ -70,10 +73,15 @@ public class PurityAnalyzer
             workingSymbol.Parameters.Select(x => x.Type.ToUniqueString())
                 .ToList());
 
-        report.ReturnValueIsFresh = m.IsReturnFresh(model);
+        var freshResult = m.IsReturnFresh(model, solution);
+        report.ReturnValueIsFresh = freshResult.IsFresh;
         report.MethodType = workingSymbol.MethodKind.ToMethodType();
         report.Violations.AddRange(ExtractPurityViolations(m, model));
-        report.Dependencies.AddRange(ExtractMethodDependencies(m, model));
+        report.Dependencies.AddRange(ExtractMethodDependencies(m, model, solution));
+        
+        
+        report.Dependencies.Where(x => freshResult.Dependencies.Any(y => x.FullName == y.FullName)).ToList()
+            .ForEach(x => x.FreshDependsOnMethodReturnIsFresh = true);
         return report;
     }
 
@@ -84,7 +92,7 @@ public class PurityAnalyzer
             .ToList();
     }
 
-    private List<MethodDependency> ExtractMethodDependencies(SyntaxNode m, SemanticModel model)
+    private List<MethodDependency> ExtractMethodDependencies(SyntaxNode m, SemanticModel model, Solution solution)
     {
         var invocations = m.DescendantNodes().OfType<InvocationExpressionSyntax>().Cast<SyntaxNode>();
         var lambdas = m.DescendantNodes().OfType<LambdaExpressionSyntax>().Cast<SyntaxNode>();
@@ -97,6 +105,13 @@ public class PurityAnalyzer
                 _logger.LogWarning($"Could not find symbol for {c.ToString()}");
                 return new MethodDependency(c.ToString(), Scoping.Field);
             }
+
+
+            if (symbol.IsAbstract)
+            {
+                var implementations = SymbolFinder.FindImplementationsAsync(symbol, solution).Result.ToList();
+            }
+            
 
             return new MethodDependency(symbol.GetUniqueMethodName(c),
                 symbol.ContainingNamespace.ToUniqueString(),

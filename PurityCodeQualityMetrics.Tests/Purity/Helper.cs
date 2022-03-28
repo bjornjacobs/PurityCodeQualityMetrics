@@ -5,9 +5,9 @@ namespace PurityCodeQualityMetrics.Tests.Purity;
 
 public class Helper
 {
-    private static IList<PurityReport>? _cache = null;
+    private static List<PurityReport>? _cache = null;
 
-    public static async Task<IList<PurityReport>> GenerateReports(PurityAnalyzer _sut)
+    public static async Task<List<PurityReport>> GenerateReports(PurityAnalyser _sut)
     {
         if (_cache != null) return _cache;
 

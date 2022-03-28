@@ -1,5 +1,6 @@
 ﻿using CommandLine;
 using PurityCodeQualityMetrics.Purity;
+using PurityCodeQualityMetrics.Purity.Util;
 
 namespace PurityCodeQualityMetrics;
 
@@ -43,7 +44,7 @@ public class ConsoleInterface
             }
         }
 
-        var unknown = repo.GetAllUnknownMethods().OrderBy(x => x).ToList();
+        var unknown = repo.GetAllReports().GetAllUnkownMethods().OrderBy(x => x).ToList();
         if (unknown.Any())
         {
             Console.WriteLine($" Unknown methods {unknown.Count}:");
@@ -59,9 +60,13 @@ public class ConsoleInterface
     {
         foreach (var purityScore in scores)
         {
-            Console.WriteLine($"{purityScore.Report.Name}: {purityScore.Puritylevel.ToString()} ({purityScore.Violations.Count})");
+            Console.WriteLine($"{purityScore.Report.Name}: {purityScore.Puritylevel.ToString()} ({purityScore.Violations.Count}) - ReturnsFreshObject: {purityScore.ReturnIsFresh}  - {purityScore.Metric1()}");
             if(verbose)
-                purityScore.Violations.ForEach(x => Console.WriteLine($" - {x}"));
+                purityScore.Violations.ForEach(x =>
+                {
+                    Enumerable.Range(0, x.Distance).ToList().ForEach(_ => Console.Write(" "));
+                    Console.WriteLine($"- {x}");
+                });
         }
     }
 }

@@ -13,7 +13,7 @@ namespace PurityCodeQualityMetrics.Tests.Purity;
 public class ViolationsPolicyTests
 {
     private static Mock<ILogger> _logger = new Mock<ILogger>();
-    private readonly PurityAnalyzer _sut = new(_logger.Object);
+    private readonly PurityAnalyser _sut = new(_logger.Object);
 
     //For the use of nameof()
     private static readonly GloballyImpureTestClass GloballyImpureTestClassInstance = new();

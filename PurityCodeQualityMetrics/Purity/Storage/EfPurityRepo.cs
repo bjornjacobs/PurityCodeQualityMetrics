@@ -11,9 +11,9 @@ public class DatabaseContext : DbContext
     
     public DatabaseContext()
     {
-        var folder = Environment.SpecialFolder.LocalApplicationData;
+        var folder = Environment.SpecialFolder.Desktop;
         var path = Environment.GetFolderPath(folder);
-        DbPath = "./reports.db"; // System.IO.Path.Join(path, "reports.db");
+        DbPath = Path.Join(path, "/purity_data/reports.db");
     }
     
     protected override void OnConfiguring(DbContextOptionsBuilder options)
@@ -41,6 +41,7 @@ public class EfPurityRepo : IPurityReportRepo
     public List<PurityReport> GetAllReports(string start = "")
     {
         using var db = new DatabaseContext();
+        db.Database.EnsureCreated();
         return db.Reports.Where(x => x.FullName.StartsWith(start)).Include(x => x.Dependencies).ToList();
     }
 
@@ -62,14 +63,10 @@ public class EfPurityRepo : IPurityReportRepo
             db.SaveChanges();
         }
     }
-
-    public IEnumerable<string> GetAllUnknownMethods()
+    
+    public void Clear()
     {
         using var db = new DatabaseContext();
-        db.Database.EnsureCreated();
-        
-        return db.Dependencies
-            .Where(d => !db.Reports.Any(r => d.FullName == r.FullName))
-            .Select(x => x.FullName).Distinct().ToList();
+        db.Database.EnsureDeleted();
     }
 }

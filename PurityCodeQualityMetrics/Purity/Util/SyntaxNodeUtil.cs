@@ -32,6 +32,7 @@ public static class SyntaxNodeUtil
             LambdaExpressionSyntax => (IMethodSymbol) model.GetSymbolInfo(node).Symbol!,
             LocalFunctionStatementSyntax =>(IMethodSymbol) model.GetDeclaredSymbol(node)!,
             MethodDeclarationSyntax => (IMethodSymbol) model.GetDeclaredSymbol(node)!,
+            AccessorDeclarationSyntax => (IMethodSymbol) model.GetDeclaredSymbol(node)!,
             _ => throw new NotImplementedException()
         };
     }
@@ -61,6 +62,8 @@ public static class SyntaxNodeUtil
             .OfType<LambdaExpressionSyntax>()
             .Cast<CSharpSyntaxNode>();
 
-        return local.Concat(methods).Concat(lamda).ToList();
+        var properties = tree.GetRoot().DescendantNodes().OfType<AccessorDeclarationSyntax>();
+
+        return local.Concat(methods).Concat(lamda).Concat(properties).ToList();
     }
 }

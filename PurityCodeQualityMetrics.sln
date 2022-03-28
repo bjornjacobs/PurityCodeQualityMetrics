@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics.Tests", "PurityCodeQualityMetrics.Tests\PurityCodeQualityMetrics.Tests.csproj", "{4B8BBD04-133D-4477-824C-69551884CFF2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics.Ui", "PurityCodeQualityMetrics.Ui\PurityCodeQualityMetrics.Ui.csproj", "{0377EEE5-EAA4-45D3-9AF5-0F69A876AF0F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{4B8BBD04-133D-4477-824C-69551884CFF2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4B8BBD04-133D-4477-824C-69551884CFF2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4B8BBD04-133D-4477-824C-69551884CFF2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0377EEE5-EAA4-45D3-9AF5-0F69A876AF0F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0377EEE5-EAA4-45D3-9AF5-0F69A876AF0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0377EEE5-EAA4-45D3-9AF5-0F69A876AF0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0377EEE5-EAA4-45D3-9AF5-0F69A876AF0F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
