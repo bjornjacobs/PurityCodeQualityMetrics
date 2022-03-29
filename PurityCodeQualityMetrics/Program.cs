@@ -14,6 +14,8 @@ public class Program
         await Parser.Default.ParseArguments<CommandLineOptions>(args)
             .WithParsedAsync(async o =>
             {
+                GitInterface.Main();
+                
                 o.Project =
                     @"C:\Users\BjornJ\dev\PurityCodeQualityMetrics\PurityCodeQualityMetrics\PurityCodeQualityMetrics.csproj";
                 //  o.Project = @"C:\Users\BjornJ\dev\PureTest\PureTest.csproj";
