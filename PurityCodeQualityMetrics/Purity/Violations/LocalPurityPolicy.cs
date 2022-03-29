@@ -19,7 +19,7 @@ public class LocalPurityPolicy : IViolationPolicy
         var methodSymbol = method.GetMethodSymbol(model);
         
         var local = method
-            .DescendantNodes()
+            .DescendantNodesInThisFunction()
             .OfType<IdentifierNameSyntax>()
             .Select(x => new {Node = x, Symbol = model.GetSymbolInfo(x).Symbol})
             .Where(x => x.Symbol != null)

@@ -31,8 +31,8 @@ public class ScoresCalculatorTests
 
         foreach (var s in strongComponent)
         {
-            Assert.Contains((1, PurityViolation.ReadsLocalState), s.Violations);
-            Assert.DoesNotContain((1, PurityViolation.ModifiesLocalState), s.Violations);
+            Assert.Contains((0, PurityViolation.ReadsLocalState), s.Violations);
+            Assert.DoesNotContain((0, PurityViolation.ModifiesLocalState), s.Violations);
         }
 
 

@@ -15,6 +15,8 @@ public class PurityScore
     public Puritylevel Puritylevel { get; set; }
     
     public bool ReturnIsFresh { get; set; }
+    
+    public int DependencyCount { get; set; }
     public List<(int Distance,PurityViolation Violation)> Violations { get; set; }
     
     public void CalculateLevel()

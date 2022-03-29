@@ -58,12 +58,32 @@ public static class SyntaxNodeUtil
             .OfType<LocalFunctionStatementSyntax>()
             .Cast<CSharpSyntaxNode>();
         
-        var lamda = tree.GetRoot().DescendantNodes()
+        var lambda = tree.GetRoot().DescendantNodes()
             .OfType<LambdaExpressionSyntax>()
             .Cast<CSharpSyntaxNode>();
 
         var properties = tree.GetRoot().DescendantNodes().OfType<AccessorDeclarationSyntax>();
 
-        return local.Concat(methods).Concat(lamda).Concat(properties).ToList();
+        return local.Concat(methods).Concat(lambda).Concat(properties).ToList();
+    }
+
+    /// <summary>
+    /// Extension on DescendantNodes() that excludes nodes that are part of a lambda or local method that are defined in the given method/ functioin
+    /// </summary>
+    /// <param name="function">A method/ lambda or local function</param>
+    /// <returns>All nodes that are defined in the given function</returns>
+    public static IEnumerable<SyntaxNode> DescendantNodesInThisFunction(this SyntaxNode function)
+    {
+        return function.DescendantNodes().Where(x => x.IsInFunction(function));
+    }
+
+    private static bool IsInFunction(this SyntaxNode node, SyntaxNode function)
+    {
+        if (node.Parent == null) return false;
+        if (node.Parent.Equals(function)) return true;
+        if (node.Parent is MethodDeclarationSyntax or LocalFunctionStatementSyntax or LambdaExpressionSyntax)
+            return false;
+        
+        return IsInFunction(node.Parent, function);
     }
 }

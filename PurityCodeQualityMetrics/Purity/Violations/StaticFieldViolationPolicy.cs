@@ -9,7 +9,7 @@ public class StaticFieldViolationPolicy : IViolationPolicy
     public List<PurityViolation> Check(SyntaxNode method, SyntaxTree tree, SemanticModel model)
     {
         IEnumerable<IdentifierNameSyntax> identifiers = method
-            .DescendantNodes()
+            .DescendantNodesInThisFunction()
             .OfType<IdentifierNameSyntax>();
 
         return identifiers.Where(x =>

@@ -43,6 +43,8 @@ public class PurityCalculator
         var scores = component.Select(x => new PurityScore(x, new List<(int Distance, PurityViolation Violation)>())).ToList();
         var distances = FloydWarshall(component);
 
+        var componentDepCount = component.Sum(x => x.Dependencies.Count);
+
         //Calculates dependency outside of component 
         foreach (var score in scores)
         {
@@ -66,6 +68,7 @@ public class PurityCalculator
                         x == null ? new List<(int, PurityViolation)> {(1, PurityViolation.UnknownMethod)} : x.Violations.Select(x => (x.Distance + 1, x.Violation)))
                     .ToList()
             );
+            score.DependencyCount = score.Report.Dependencies.Count + depsOutside.Sum(x => x?.DependencyCount ?? 0) + componentDepCount;
             
             score.ReturnIsFresh = score.Report.ReturnValueIsFresh &&
                                   score.Report.Dependencies.Where(x =>

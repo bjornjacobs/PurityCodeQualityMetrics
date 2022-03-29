@@ -30,27 +30,31 @@ public class PurityAnalyser
         _logger = logger;
     }
 
-    public async Task<List<PurityReport>> GeneratePurityReports(string project)
+    public async Task<List<PurityReport>> GeneratePurityReports(string solution)
     {
         _logger.LogInformation("Starting compilation");
         if(!MSBuildLocator.IsRegistered)
             MSBuildLocator.RegisterDefaults();
         using var workspace = MSBuildWorkspace.Create();
         workspace.WorkspaceFailed += (o, e) => throw new Exception(e.ToString());
-        var currentProject = await workspace.OpenProjectAsync(project);
+        var currentProject = await workspace.OpenSolutionAsync(solution);
 
-        if (!currentProject.MetadataReferences.Any())
+        if (!currentProject.Projects.First().MetadataReferences.Any())
             throw new Exception("References are empty: this usually means that MsBuild didn't load correctly");
 
-        _logger.LogInformation($"Loaded project: {project}");
-        var compilation = await currentProject.GetCompilationAsync();
+        _logger.LogInformation($"Loaded project: {solution}");
+        return currentProject.Projects.SelectMany( project =>
+        {
+            var compilation = project.GetCompilationAsync().Result;
 
-        if (compilation == null) throw new Exception("Could not compile project");
-        var errors = compilation.GetDiagnostics().Where(n => n.Severity == DiagnosticSeverity.Error).ToList();
-        _logger.LogInformation($"Project compiled with {errors.Count} errors");
-        errors.ForEach(x => _logger.LogDebug("[COMPILER_ERROR] " + x.Location + " " + x.GetMessage()));
+            if (compilation == null) throw new Exception("Could not compile project");
+            var errors = compilation.GetDiagnostics().Where(n => n.Severity == DiagnosticSeverity.Error).ToList();
+            _logger.LogInformation($"Project compiled with {errors.Count} errors");
+            errors.ForEach(x => _logger.LogDebug("[COMPILER_ERROR] " + x.Location + " " + x.GetMessage()));
 
-        return ExtractMethodReports(compilation, currentProject.Solution);
+            return ExtractMethodReports(compilation, currentProject);
+        }).ToList();
+
     }
 
     private List<PurityReport> ExtractMethodReports(Compilation compilation, Solution solution)

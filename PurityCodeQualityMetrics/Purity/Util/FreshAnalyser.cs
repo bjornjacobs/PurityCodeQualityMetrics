@@ -12,12 +12,8 @@ public static class FreshAnalyser
         IMethodSymbol? method = node.GetMethodSymbol(model);
         
         if (method.ReturnsVoid || !method.ReturnType.IsReferenceType) return (true, new List<MethodDependency>());
-
-        var m = (MethodDeclarationSyntax) node;
-        var controlFlow = model.AnalyzeControlFlow(m.Body);
-
-        var returns = controlFlow.ReturnStatements
-            .Cast<ReturnStatementSyntax>()
+        
+        var returns = node.DescendantNodes().OfType<ReturnStatementSyntax>()
             .Select(x => x.Expression)
             .ToList();
 
@@ -28,12 +24,15 @@ public static class FreshAnalyser
         while (process.Count > 0)
         {
             var currentNode = process.Pop();
-            var currentSymbol = model.GetSymbolInfo(currentNode).Symbol!;
+            var currentSymbol = model.GetSymbolInfo(currentNode).Symbol;
+            if(currentSymbol == null)
+                continue;
+            
             
             if (currentSymbol.Kind == SymbolKind.Method)
             {
                 var methodRef = (IMethodSymbol) currentSymbol;
-                if (methodRef.MethodKind != MethodKind.Constructor)
+                if (methodRef.MethodKind != MethodKind.Constructor && methodRef.MethodKind != MethodKind.BuiltinOperator)
                     dependencies.Add(new MethodDependency(methodRef.GetUniqueMethodName(currentNode),
                         methodRef.ContainingNamespace.ToUniqueString(),
                         methodRef.ReturnType.ToUniqueString(),
@@ -52,7 +51,7 @@ public static class FreshAnalyser
             
             var id = currentNode as IdentifierNameSyntax;
 
-            var declarationSyntax = m.DescendantNodes()
+            var declarationSyntax = node.DescendantNodes()
                 .OfType<VariableDeclaratorSyntax>()
                 .Where(x => x.Identifier.Text == id.Identifier.Text)
                 .Select(x => x.Initializer?.Value).Single();
@@ -62,7 +61,7 @@ public static class FreshAnalyser
 
             //Check all assignments
 
-            var assignments = m.DescendantNodes().OfType<AssignmentExpressionSyntax>()
+            var assignments = node.DescendantNodes().OfType<AssignmentExpressionSyntax>()
                 .Where(x => (x.Left as IdentifierNameSyntax)?.Identifier.Text == id?.Identifier.Text)
                 .Select(x => x.Right).ToList();
             

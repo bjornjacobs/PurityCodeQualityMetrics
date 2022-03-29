@@ -60,12 +60,17 @@ public class ConsoleInterface
     {
         foreach (var purityScore in scores)
         {
-            Console.WriteLine($"{purityScore.Report.Name}: {purityScore.Puritylevel.ToString()} ({purityScore.Violations.Count}) - ReturnsFreshObject: {purityScore.ReturnIsFresh}  - {purityScore.Metric1()}");
+            Console.WriteLine($"{purityScore.Report.Name}: {purityScore.Puritylevel.ToString()} ({purityScore.Violations.Count}) - ReturnsFreshObject: {purityScore.ReturnIsFresh} - DependencyCount: {purityScore.DependencyCount}  - {purityScore.Metric1()}");
             if(verbose)
                 purityScore.Violations.ForEach(x =>
                 {
-                    Enumerable.Range(0, x.Distance).ToList().ForEach(_ => Console.Write(" "));
-                    Console.WriteLine($"- {x}");
+                    if (x.Violation != PurityViolation.UnknownMethod)
+                    {
+                        Enumerable.Range(0, x.Distance).ToList().ForEach(_ => Console.Write(" "));
+                        Console.WriteLine($"- {x}");
+                    }
+
+    
                 });
         }
     }
