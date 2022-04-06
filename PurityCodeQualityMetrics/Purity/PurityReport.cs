@@ -50,6 +50,8 @@ public class PurityReport
     public bool IsMarkedByHand { get; set; }
     public MethodType MethodType { get; set; }
     
+    public string FilePath { get; set; }
+    
     [NotMapped] public List<string> ParameterTypes { get; set; } = null!;
     
     [NotMapped] public List<PurityViolation> Violations { get; set; }

@@ -11,11 +11,13 @@ namespace PurityCodeQualityMetrics;
 
 public class GitInterface
 {
-    private static string RepositoriesFolder = $"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}/dev/repos";
+    private static string RepositoriesFolder =
+        $"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}/dev/repos";
+
     private static ShellService _shellService;
     private static string _repository;
 
-    public static void Main()
+    public static void Mainb()
     {
         Console.WriteLine("Repository Analyzer");
         Console.WriteLine("Select target project");
@@ -34,16 +36,9 @@ public class GitInterface
 
         TargetProject targetProject = targetProjects[choice];
 
-        IIssueTrackerService issueTrackerService;
-        if (targetProject.RepositoryName == "knowNow")
-        {
-            issueTrackerService = new TfsService($@"{RepositoriesFolder}/{targetProject.RepositoryName}");
-            ;
-        }
-        else
-        {
-            issueTrackerService = new GithubService(targetProject);
-        }
+        IIssueTrackerService issueTrackerService = targetProject.RepositoryName == "knowNow"
+            ? new TfsService($@"{RepositoriesFolder}/{targetProject.RepositoryName}")
+            : new GithubService(targetProject);
 
         string solutionFile =
             $@"{RepositoriesFolder}/{targetProject.RepositoryName}/{targetProject.SolutionFileLocation}";
@@ -54,7 +49,8 @@ public class GitInterface
         var hash = _shellService.GetHeadHash();
         RepositoryWithMetrics repositoryWithMetrics = new RepositoryWithMetrics();
         MetricRunner runner = new MetricRunner(solutionFile);
-        SolutionVersionWithMetrics solutionVersionWithMetrics = runner.GetSolutionVersionWithMetrics(new List<PurityReport>()).Result;
+        SolutionVersionWithMetrics solutionVersionWithMetrics =
+            runner.GetSolutionVersionWithMetrics(new List<PurityReport>()).Result;
 
         repositoryWithMetrics.AddVersion("HEAD", solutionVersionWithMetrics);
 
@@ -63,13 +59,15 @@ public class GitInterface
 
         List<OutputRow> output = GetOutput(solutionVersionWithMetrics.ClassesWithMetrics, bugAmountInClasses);
 
+        Console.WriteLine("Writing file");
         var path =
             $@"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\dev\code-analysis-results\";
         Directory.CreateDirectory(path);
         OutputCsv(output,
             path + $"{targetProject.OrganizationName}_{_repository}_{hash}_complete.csv");
 
-        Console.ReadKey();
+        
+        Console.WriteLine("Done!!");
     }
 
     private static List<OutputRow> GetOutput(Dictionary<string, ClassWithMetrics> classesWithMetrics,

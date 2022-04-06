@@ -107,7 +107,9 @@ namespace PurityCodeQualityMetrics.Ui
             };
             
             _repo.AddRange(new []{report});
-            LoadUnknown();
+            Unknowns.RemoveAt(UnknownIndex);
+            if (Unknowns.Any())
+                UnknownMethodName.Text = $"[{UnknownIndex}]: {Unknowns[UnknownIndex].FullName}";
         }
 
         public List<PurityViolation> GetViolationsFromUi()

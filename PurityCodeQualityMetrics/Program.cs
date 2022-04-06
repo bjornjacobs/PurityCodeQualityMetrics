@@ -14,7 +14,17 @@ public class Program
         await Parser.Default.ParseArguments<CommandLineOptions>(args)
             .WithParsedAsync(async o =>
             {
-                GitInterface.Main();
+                var factory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug));
+                var analyser = new PurityAnalyser(factory.CreateLogger<PurityAnalyser>());
+                var calculator = new PurityCalculator(factory.CreateLogger<PurityCalculator>());
+
+                var l = new LandkroonInterface(factory.CreateLogger<LandkroonInterface>(), analyser, calculator);
+               // await l.Run(@"C:\Users\BjornJ\dev\repos\jellyfin",  new List<string>(){"Jellyfin.sln", "MediaBrowser.sln"});
+                await l.Run(@"C:\Users\BjornJ\dev\repos\akka.net",  new List<string>(){"src\\Akka.sln"});
+                
+                
+                return;
+               // GitInterface.Main();
                 
                 o.Project =
                     @"C:\Users\BjornJ\dev\PurityCodeQualityMetrics\PurityCodeQualityMetrics\PurityCodeQualityMetrics.csproj";
@@ -22,12 +32,11 @@ public class Program
 
                 o.Project = @"C:\Users\BjornJ\dev\PurityCodeQualityMetrics\PurityCodeQualityMetrics.sln";
 
-                var factory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug));
+               
                 var repo = new EfPurityRepo();
                 repo.Clear();
 
                 var analyzer = new PurityAnalyser(factory.CreateLogger<PurityAnalyser>());
-                var calculator = new PurityCalculator(factory.CreateLogger<PurityCalculator>());
 
                 var purityReports = await analyzer.GeneratePurityReports(o.Project);
                 repo.AddRange(purityReports);

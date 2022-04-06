@@ -20,7 +20,9 @@ public static class SymbolUtil
             MethodKind.DelegateInvoke => symbol.GetNameWithClass(),
             MethodKind.PropertyGet => symbol.GetNameWithClass(),
             MethodKind.PropertySet => symbol.GetNameWithClass(),
-            _ => throw new NotImplementedException()
+            MethodKind.ExplicitInterfaceImplementation => symbol.GetNameWithClass(),
+            MethodKind.UserDefinedOperator => symbol.GetNameWithClass(),
+            _ => symbol.GetNameWithClass()
         };
     }
 

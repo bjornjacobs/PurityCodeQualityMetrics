@@ -53,9 +53,15 @@ namespace CodeQualityAnalyzer
                 .Where(x => Regex.IsMatch(x.CommitInfo.Message, @"#\d+"))
                 // Check if there is a linked bug issue to the number found in the commit message
                 .Where(x => ContainsBugIssue(x.CommitInfo.Message, bugIssues))
-                .Select(x => x.Hash)
+                .Select(x => x.Hash).ToList()
                 ;
 
+            var all = commits
+                // Look for patterns that close an issue (see: https://help.github.com/en/articles/closing-issues-using-keywords)
+                .Where(x => Regex.IsMatch(x.CommitInfo.Message, @"(clos(e[sd]?|ing)|fix(e[sd]|ing)?|resolv(e[sd]?))",
+                    RegexOptions.IgnoreCase)).ToList();
+            
+            
             Console.WriteLine($"{bugCommitsHashes.Count()} identified as bug fixing commits");
 
             ConcurrentBag<BugFixCommit> bugCommits = new ConcurrentBag<BugFixCommit>();
@@ -106,10 +112,9 @@ namespace CodeQualityAnalyzer
                 while (!response.IsSuccessful && tries < 10);
                 List<T> currentPageResults = JsonConvert.DeserializeObject<List<T>>(response.Content);
                 resultList.AddRange(currentPageResults);
-
-                // TODO: Determine "Link-Header" instead of hard coding the index, works for now :)
-                if (!response.Headers.ToList()[9].ToString().Contains("next")) break;
-//           
+                
+                if (!currentPageResults.Any()) break;
+           
                 Console.Write($"\r{typeof(T).Name}s count: {resultList.Count}");
             }
 
@@ -173,6 +178,7 @@ namespace CodeQualityAnalyzer
                 if (intersectedClasses.Count > 1)
                 {
                     Console.WriteLine($"Affected line {affectedLine} intersects with multiple classes");
+                    //TODO: Fix this so it select the right class
                     continue;
                 }
 

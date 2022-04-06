@@ -18,6 +18,13 @@ public class DatabaseContext : DbContext
     
     protected override void OnConfiguring(DbContextOptionsBuilder options)
         => options.UseSqlite($"Data Source={DbPath}");
+    
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<MethodDependency>()
+            .HasIndex("PurityReportFullName")
+            .HasFilter("[Url] IS NOT NULL");
+    }
 }
 
 public class EfPurityRepo : IPurityReportRepo
@@ -52,6 +59,8 @@ public class EfPurityRepo : IPurityReportRepo
 
         foreach (var report in reports)
         {
+            int i = reports.ToList().IndexOf(report);
+            Console.WriteLine(i);
             var toRemove = db.Reports.Where(x => x.FullName == report.FullName).Include(x => x.Dependencies);
             foreach (var remove in toRemove)
             {
@@ -59,7 +68,7 @@ public class EfPurityRepo : IPurityReportRepo
                 db.Reports.Remove(remove);
             }
             
-            db.Add(report);
+            db.Reports.Add(report);
             db.SaveChanges();
         }
     }

@@ -32,41 +32,52 @@ public class PurityAnalyser
 
     public async Task<List<PurityReport>> GeneratePurityReports(string solution)
     {
+        return await GeneratePurityReports(solution, new List<string>());
+    }
+    
+    public async Task<List<PurityReport>> GeneratePurityReports(string solution, List<string> files)
+    { 
         _logger.LogInformation("Starting compilation");
         if(!MSBuildLocator.IsRegistered)
             MSBuildLocator.RegisterDefaults();
         using var workspace = MSBuildWorkspace.Create();
-        workspace.WorkspaceFailed += (o, e) => throw new Exception(e.ToString());
-        var currentProject = await workspace.OpenSolutionAsync(solution);
+        workspace.WorkspaceFailed += (o, e) => _logger.LogWarning("Workspace error: {}", e.Diagnostic.Message);
+        var currentSolution = await workspace.OpenSolutionAsync(solution);
 
-        if (!currentProject.Projects.First().MetadataReferences.Any())
+        if (currentSolution.Projects.All(x => !x.MetadataReferences.Any()))
             throw new Exception("References are empty: this usually means that MsBuild didn't load correctly");
-
+    
         _logger.LogInformation($"Loaded project: {solution}");
-        return currentProject.Projects.SelectMany( project =>
+        return currentSolution.Projects.SelectMany( project =>
         {
+            if (project.FilePath.Contains("test", StringComparison.CurrentCultureIgnoreCase))
+                return new List<PurityReport>();
+            
             var compilation = project.GetCompilationAsync().Result;
 
             if (compilation == null) throw new Exception("Could not compile project");
             var errors = compilation.GetDiagnostics().Where(n => n.Severity == DiagnosticSeverity.Error).ToList();
-            _logger.LogInformation($"Project compiled with {errors.Count} errors");
+            _logger.LogInformation($"Project {project.Name}: compiled with {errors.Count} errors");
             errors.ForEach(x => _logger.LogDebug("[COMPILER_ERROR] " + x.Location + " " + x.GetMessage()));
-
-            return ExtractMethodReports(compilation, currentProject);
+    
+            return ExtractMethodReports(compilation, currentSolution, files);
         }).ToList();
-
     }
 
-    private List<PurityReport> ExtractMethodReports(Compilation compilation, Solution solution)
+    
+    
+
+    private List<PurityReport> ExtractMethodReports(Compilation compilation, Solution solution, List<string> files)
     {
-        //Each syntax tree represents a file
-        return compilation.SyntaxTrees.SelectMany(tree =>
-            tree.GetAllMethods().Select(m => ExtractReportFromDeclaration(m, compilation.GetSemanticModel(tree), solution))
+        //Each syntax tree represents a file. Filter on files if there are any
+        
+        return compilation.SyntaxTrees.Where(x => !files.Any() || files.Any(y => x.FilePath.Contains(y, StringComparison.CurrentCultureIgnoreCase))).SelectMany(tree =>
+            tree.GetAllMethods().Select(m => ExtractReportFromDeclaration(m, compilation.GetSemanticModel(tree), solution, tree.FilePath))
         ).ToList();
     }
 
 
-    private PurityReport ExtractReportFromDeclaration(SyntaxNode m, SemanticModel model, Solution solution)
+    public PurityReport ExtractReportFromDeclaration(SyntaxNode m, SemanticModel model, Solution solution, string path)
     {
         var workingSymbol = m.GetMethodSymbol(model);
 
@@ -78,6 +89,7 @@ public class PurityAnalyser
                 .ToList());
 
         var freshResult = m.IsReturnFresh(model, solution);
+        report.FilePath = path;
         report.ReturnValueIsFresh = freshResult.IsFresh;
         report.MethodType = workingSymbol.MethodKind.ToMethodType();
         report.Violations.AddRange(ExtractPurityViolations(m, model));
@@ -104,17 +116,22 @@ public class PurityAnalyser
         return lambdas.Concat(invocations).Select( c =>
         {
             var symbol = model.GetSymbolInfo(c).Symbol as IMethodSymbol;
+            
             if (symbol == null)
             {
-                _logger.LogWarning($"Could not find symbol for {c.ToString()}");
+                if (!c.ToString().Contains("nameof", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    _logger.LogWarning($"Could not find symbol for {c.ToString()}");
+                }
+ 
                 return new MethodDependency(c.ToString(), Scoping.Field);
             }
 
 
-            if (symbol.IsAbstract)
-            {
-                var implementations = SymbolFinder.FindImplementationsAsync(symbol, solution).Result.ToList();
-            }
+            //if (symbol.IsAbstract)
+          //  {
+               // var implementations = SymbolFinder.FindImplementationsAsync(symbol, solution).Result.ToList();
+          //  }
             
 
             return new MethodDependency(symbol.GetUniqueMethodName(c),

@@ -24,6 +24,7 @@ public static class FreshAnalyser
         while (process.Count > 0)
         {
             var currentNode = process.Pop();
+            if(currentNode == null) continue;
             var currentSymbol = model.GetSymbolInfo(currentNode).Symbol;
             if(currentSymbol == null)
                 continue;
@@ -53,8 +54,8 @@ public static class FreshAnalyser
 
             var declarationSyntax = node.DescendantNodes()
                 .OfType<VariableDeclaratorSyntax>()
-                .Where(x => x.Identifier.Text == id.Identifier.Text)
-                .Select(x => x.Initializer?.Value).Single();
+                .Where(x => x.Identifier.Text == id?.Identifier.Text)
+                .Select(x => x.Initializer?.Value).FirstOrDefault();
             
             if(declarationSyntax != null)
                 process.Push(declarationSyntax);

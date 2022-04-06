@@ -15,6 +15,7 @@ public class PurityCalculator
 
     public List<PurityScore> CalculateScores(List<PurityReport> reports)
     {
+        _table.Clear();
         _logger.LogInformation("Starting calculating scores");
         //Calculate the unkown methods: e.g. methods that we don't have a purity report on
         var allDependencies = reports.SelectMany(x => x.Dependencies).DistinctBy(x => x.FullName);

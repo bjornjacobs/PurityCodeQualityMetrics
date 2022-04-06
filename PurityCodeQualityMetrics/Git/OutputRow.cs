@@ -29,6 +29,8 @@ namespace CodeQualityAnalyzer
         public double LambdaLocalVariableUsed { get; set; }
         public double UnterminatedCollections { get; set; }
         public double LambdaSideEffectCount { get; set; }
+        
+        public double Purity { get; set; }
 
         public OutputRow(string className, IReadOnlyDictionary<Measure, double> metricResults)
         {
@@ -55,6 +57,7 @@ namespace CodeQualityAnalyzer
             LambdaLocalVariableUsageCount = metricResults[Measure.LambdaLocalVariableUsageCount];
             LambdaSideEffectCount = metricResults[Measure.LambdaSideEffectCount];
             UnterminatedCollections = metricResults[Measure.UnterminatedCollections]; 
+            Purity = metricResults[Measure.Purity]; 
         }
 
         public void SetFaulty() => Faulty = 1;

@@ -8,7 +8,9 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.Extensions.Logging;
+using PurityCodeQualityMetrics;
 using PurityCodeQualityMetrics.Purity;
+using PurityCodeQualityMetrics.Purity.Storage;
 
 namespace CodeQualityAnalyzer.CodeMetrics
 {
@@ -23,8 +25,10 @@ namespace CodeQualityAnalyzer.CodeMetrics
                 MSBuildLocator.RegisterDefaults();
         }
 
-        public async Task<SolutionVersionWithMetrics> GetSolutionVersionWithMetrics(List<PurityReport> reports)
+        public async Task<SolutionVersionWithMetrics> GetSolutionVersionWithMetrics(List<PurityReport> a)
         {
+            var analyser = new PurityAnalyser(LoggerFactory.Create(x => x.AddConsole()).CreateLogger<MetricRunner>());
+            
             using var workspace = MSBuildWorkspace.Create();
             workspace.WorkspaceFailed += (o, e) => Console.WriteLine(e.Diagnostic.Message);
             var solution = await workspace.OpenSolutionAsync(_solutionLocation, new ConsoleProgressReporter());
@@ -33,6 +37,17 @@ namespace CodeQualityAnalyzer.CodeMetrics
 
 //                Project project = projects.First();
             SolutionVersionWithMetrics solutionVersionWithMetrics = new SolutionVersionWithMetrics();
+
+            var reports = await analyser.GeneratePurityReports(_solutionLocation);
+            
+            new EfPurityRepo().AddRange(reports);
+            Console.WriteLine("Added reports");
+
+            var scores = new PurityCalculator(LoggerFactory
+                    .Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Critical)).CreateLogger(""))
+                .CalculateScores(reports);
+   
+
             foreach (Project project in projects)
             {
                 Compilation comp = await project.GetCompilationAsync();
@@ -58,7 +73,7 @@ namespace CodeQualityAnalyzer.CodeMetrics
 
                         if (solutionVersionWithMetrics.ClassProcessed(classNameWithHash)) continue;
 
-                        ClassWithMetrics classMetricResults = GetMetricResults(classDecl, semanticModel, className, location, classExtensions, classCouplings, reports);
+                        ClassWithMetrics classMetricResults = GetMetricResults(classDecl, semanticModel, className, location, classExtensions, classCouplings, scores);
 
                         if(className == "LocalizableStrings")
                             Console.WriteLine();
@@ -74,14 +89,11 @@ namespace CodeQualityAnalyzer.CodeMetrics
         }
 
 
-        private static ClassWithMetrics GetMetricResults(ClassDeclarationSyntax classDecl, SemanticModel semanticModel, string className, string location, Dictionary<INamedTypeSymbol, int> classExtensions, Dictionary<INamedTypeSymbol, int> classCouplings, List<PurityReport> reports)
+        private static ClassWithMetrics GetMetricResults(ClassDeclarationSyntax classDecl, SemanticModel semanticModel, string className, string location, Dictionary<INamedTypeSymbol, int> classExtensions, Dictionary<INamedTypeSymbol, int> classCouplings, List<PurityScore> scores)
         {
             ClassWithMetrics classMetricResults = new ClassWithMetrics(className, location);
             
-            var scores =new PurityCalculator(LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Critical)).CreateLogger(""))
-                .CalculateScores(reports)
-                .Where(x => x.Report.FullName.Contains(className))
-                .ToList();
+
 
             var lambdaMetrics = LambdaMetrics.GetValueList(classDecl, semanticModel);
             classMetricResults.AddMetric(Measure.LambdaCount, lambdaMetrics.LambdaCount);
@@ -124,7 +136,10 @@ namespace CodeQualityAnalyzer.CodeMetrics
             int lambdaScore = (int)((double)sourceLinesOfLambda / sourceLinesOfCode * 100);
             classMetricResults.AddMetric(Measure.LambdaScore, lambdaScore);
 
-            double purity = scores.Any() ? scores.Average(x => x.Metric1()) : 0;
+            var s =             scores.Where(x => x.Report.FullName.Contains(className))
+                .ToList();
+            
+            double purity = s.Any() ? s.Average(x => x.Metric1()) : 0;
             classMetricResults.AddMetric(Measure.Purity, purity);
 
 
@@ -153,7 +168,7 @@ namespace CodeQualityAnalyzer.CodeMetrics
                     projectDisplay += $" ({loadProgress.TargetFramework})";
                 }
 
-              //  Console.WriteLine($"{loadProgress.Operation,-15} {loadProgress.ElapsedTime,-15:m\\:ss\\.fffffff} {projectDisplay}");
+                Console.WriteLine($"{loadProgress.Operation,-15} {loadProgress.ElapsedTime,-15:m\\:ss\\.fffffff} {projectDisplay}");
             }
         }
     }

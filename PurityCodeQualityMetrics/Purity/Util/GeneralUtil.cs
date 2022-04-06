@@ -16,7 +16,9 @@ public static class GeneralUtil
             MethodKind.DelegateInvoke => MethodType.Local, 
             MethodKind.PropertyGet => MethodType.Getter, 
             MethodKind.PropertySet => MethodType.Setter, 
-            var kind => throw new NotImplementedException($"MethodKind of {kind} is not implemented")
+            MethodKind.ExplicitInterfaceImplementation => MethodType.Method,
+            MethodKind.UserDefinedOperator => MethodType.Method,
+            var kind => MethodType.Method,
         };
     }
 
