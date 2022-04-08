@@ -19,7 +19,7 @@ public class ScoresCalculatorTests
     [Fact]
     public async Task TestCycles()
     {
-        var reports = await Helper.GenerateReports(_purityAnalyser);
+        var reports = await Helper.GetReports(_purityAnalyser);
         var scores = _purityCalculator.CalculateScores(reports);
 
         var strongComponent = new[]

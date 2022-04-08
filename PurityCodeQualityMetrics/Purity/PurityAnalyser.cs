@@ -48,20 +48,39 @@ public class PurityAnalyser
             throw new Exception("References are empty: this usually means that MsBuild didn't load correctly");
     
         _logger.LogInformation($"Loaded project: {solution}");
-        return currentSolution.Projects.SelectMany( project =>
-        {
-            if (project.FilePath.Contains("test", StringComparison.CurrentCultureIgnoreCase))
-                return new List<PurityReport>();
-            
-            var compilation = project.GetCompilationAsync().Result;
-
-            if (compilation == null) throw new Exception("Could not compile project");
-            var errors = compilation.GetDiagnostics().Where(n => n.Severity == DiagnosticSeverity.Error).ToList();
-            _logger.LogInformation($"Project {project.Name}: compiled with {errors.Count} errors");
-            errors.ForEach(x => _logger.LogDebug("[COMPILER_ERROR] " + x.Location + " " + x.GetMessage()));
+        return currentSolution.Projects
+            .Where(x => !x.Name.Contains("test", StringComparison.CurrentCultureIgnoreCase))
+            .SelectMany(x => AnalyseProject(x, currentSolution, files)).ToList();
+    }
     
-            return ExtractMethodReports(compilation, currentSolution, files);
-        }).ToList();
+    public async Task<List<PurityReport>> GeneratePurityReportsProject(string projectFile)
+    { 
+        _logger.LogInformation("Starting compilation");
+        if(!MSBuildLocator.IsRegistered)
+            MSBuildLocator.RegisterDefaults();
+        using var workspace = MSBuildWorkspace.Create();
+        workspace.WorkspaceFailed += (o, e) => _logger.LogWarning("Workspace error: {}", e.Diagnostic.Message);
+        var project = await workspace.OpenProjectAsync(projectFile);
+
+        if (!project.MetadataReferences.Any())
+            throw new Exception("References are empty: this usually means that MsBuild didn't load correctly");
+    
+        _logger.LogInformation($"Loaded project: {project.Name}");
+        return AnalyseProject(project, project.Solution, new List<string>());
+    }
+
+    public List<PurityReport> AnalyseProject(Project project, Solution solution, List<string> files)
+    {
+
+            
+        var compilation = project.GetCompilationAsync().Result;
+
+        if (compilation == null) throw new Exception("Could not compile project");
+        var errors = compilation.GetDiagnostics().Where(n => n.Severity == DiagnosticSeverity.Error).ToList();
+        _logger.LogInformation($"Project {project.Name}: compiled with {errors.Count} errors");
+        errors.ForEach(x => _logger.LogDebug("[COMPILER_ERROR] " + x.Location + " " + x.GetMessage()));
+    
+        return ExtractMethodReports(compilation, solution, files);
     }
 
     

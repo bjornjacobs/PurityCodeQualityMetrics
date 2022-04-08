@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="FluentAssertions" Version="6.6.0" />
         <PackageReference Include="Moq" Version="4.17.2" />
         <PackageReference Include="NuGet.Frameworks" Version="6.1.0" /> <!--NEEDED OR ELSE MSBUILD DOESN'T WORK-->
 

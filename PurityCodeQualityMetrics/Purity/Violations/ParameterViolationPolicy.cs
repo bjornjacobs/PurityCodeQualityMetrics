@@ -16,6 +16,7 @@ public class ParameterViolationPolicy : IViolationPolicy
             .OfType<MemberAccessExpressionSyntax>()
             .Select(x => model.GetSymbolInfo(x.Expression).Symbol)
             .OfType<IParameterSymbol>()
+            .Where(x => !x.Name.Equals("this"))
             .Select(x => PurityViolation.ModifiesParameters).ToList();
     }
 }
