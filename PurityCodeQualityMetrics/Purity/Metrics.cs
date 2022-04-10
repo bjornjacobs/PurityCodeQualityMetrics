@@ -9,7 +9,7 @@ public static class Metrics
 
     private static readonly Dictionary<PurityViolation, double> Coefficients = new()
     {
-        {PurityViolation.ModifiesParameters, 1d},
+        {PurityViolation.ModifiesParameter, 1d},
         {PurityViolation.ThrowsException, 1d},
         {PurityViolation.UnknownMethod, 1d},
         {PurityViolation.ModifiesGlobalState, 1d},

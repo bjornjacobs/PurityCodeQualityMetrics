@@ -58,7 +58,7 @@ namespace PurityCodeQualityMetrics.Ui
             _violationsMap[CbReadLocal] = PurityViolation.ReadsLocalState;
             _violationsMap[CbModifiesGlobal] = PurityViolation.ModifiesGlobalState;
             _violationsMap[CbReadsGlobal] = PurityViolation.ReadsGlobalState;
-            _violationsMap[CbModifiesParameters] = PurityViolation.ModifiesParameters;
+            _violationsMap[CbModifiesParameters] = PurityViolation.ModifiesParameter;
         }
 
         private async void LoadProject_Click(object sender, RoutedEventArgs e)

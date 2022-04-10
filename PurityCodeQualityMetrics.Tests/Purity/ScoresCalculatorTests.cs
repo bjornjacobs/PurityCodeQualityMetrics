@@ -1,4 +1,5 @@
 ﻿
+using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using PurityCodeQualityMetrics.Purity;
@@ -29,15 +30,17 @@ public class ScoresCalculatorTests
             nameof(_testClass.Func3)
         }.Select(name => scores.First(x => x.Report.Name.EndsWith(name)));
 
+        
         foreach (var s in strongComponent)
         {
-            Assert.Contains((0, PurityViolation.ReadsLocalState), s.Violations);
-            Assert.DoesNotContain((0, PurityViolation.ModifiesLocalState), s.Violations);
+            var noDistance = s.Violations.Select(x => x.Violation).ToList();
+            noDistance.Should().Contain(PurityViolation.ReadsLocalState);
+            noDistance.Should().NotContain(PurityViolation.ModifiesLocalState);
         }
 
 
         var scoreF4 = scores.First(x => x.Report.Name.EndsWith(nameof(_testClass.Func4)));
-        Assert.Contains((1, PurityViolation.ReadsLocalState), scoreF4.Violations);
-        Assert.Contains((1, PurityViolation.ModifiesLocalState), scoreF4.Violations);
+        Assert.Contains((3, PurityViolation.ReadsLocalState), scoreF4.Violations);
+        Assert.Contains((0, PurityViolation.ModifiesLocalState), scoreF4.Violations);
     }
 }

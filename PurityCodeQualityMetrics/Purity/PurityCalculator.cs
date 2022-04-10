@@ -93,7 +93,7 @@ public class PurityCalculator
         {
             for (int y = 0; y < component.Count; y++)
             {
-                graph[x, y] = component[x].Dependencies.Any(d => component[y].FullName == d.FullName) ? 1 : int.MaxValue;
+                graph[x, y] = component[x].Dependencies.Any(d => component[y].FullName == d.FullName) ? 1 : 1_000_000;
             }
         }
 

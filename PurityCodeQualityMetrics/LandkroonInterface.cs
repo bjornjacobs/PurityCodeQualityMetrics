@@ -120,7 +120,7 @@ public class LandkroonInterface
             {
                 purityScore.DependencyCount,
                 purityScore.Violations.Count(x => x.Violation == PurityViolation.ThrowsException),
-                purityScore.Violations.Count(x => x.Violation == PurityViolation.ModifiesParameters),
+                purityScore.Violations.Count(x => x.Violation == PurityViolation.ModifiesParameter),
                 purityScore.Violations.Count(x => x.Violation == PurityViolation.UnknownMethod),
                 purityScore.Violations.Count(x => x.Violation == PurityViolation.ModifiesLocalState),
                 purityScore.Violations.Count(x => x.Violation == PurityViolation.ReadsLocalState),

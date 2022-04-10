@@ -4,22 +4,28 @@ namespace PurityCodeQualityMetrics.Tests.Purity.TestCode;
 
 public class ParameterImpure
 {
-    [ViolationsTest(PurityViolation.ModifiesParameters)]
+    [ViolationsTest(PurityViolation.ModifiesParameter)]
     public void EditParameterField(Poco poco)
     {
         poco.Field = 5;
     }
     
-    [ViolationsTest(PurityViolation.ModifiesParameters)]
+    [ViolationsTest(PurityViolation.ModifiesParameter)]
     public void EditParameterProperty(Poco poco)
     {
         poco.Property = 5;
     }
     
-    [ViolationsTest(PurityViolation.ModifiesParameters)]
+    [ViolationsTest(PurityViolation.ModifiesParameter)]
     public void EditParameterFieldOfObject(Poco poco)
     {
         poco.Object.Field = 5;
+    }
+    
+    [ViolationsTest]
+    public void OverwriteParameter(Poco poco)
+    {
+        poco = new Poco();
     }
 }
 

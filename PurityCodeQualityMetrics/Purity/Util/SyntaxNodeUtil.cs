@@ -11,6 +11,12 @@ public static class SyntaxNodeUtil
         return !node.IsNotAssignedTo();
     }
     
+    public static bool IsAssignedToField(this SyntaxNode node)
+    {
+        var v = !node.IsNotAssignedTo() && node.Parent.ChildTokens().Any(x => x.IsKind(SyntaxKind.DotToken));
+        return v;
+    }
+    
     public static bool IsNotAssignedTo(this SyntaxNode node)
     {
         return node.Parent == null ||
@@ -74,6 +80,10 @@ public static class SyntaxNodeUtil
     /// <returns>All nodes that are defined in the given function</returns>
     public static IEnumerable<SyntaxNode> DescendantNodesInThisFunction(this SyntaxNode function)
     {
+        if (function is MethodDeclarationSyntax m)
+        {
+            function = m.Body;
+        }
         return function.DescendantNodes().Where(x => x.IsInFunction(function));
     }
 
@@ -85,5 +95,12 @@ public static class SyntaxNodeUtil
             return false;
         
         return IsInFunction(node.Parent, function);
+    }
+
+    public static bool IsTopLevel(this SyntaxNode node)
+    {
+        var isThis = node.Parent.ChildNodes().Any(x => x is ThisExpressionSyntax);
+        return isThis ||  node.Parent.ChildNodesAndTokens()
+            .All(x => !x.IsKind(SyntaxKind.DotToken) || x.GetPreviousSibling() == node );
     }
 }

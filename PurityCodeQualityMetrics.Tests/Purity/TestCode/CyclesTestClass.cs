@@ -1,9 +1,12 @@
-﻿namespace PurityCodeQualityMetrics.Tests.Purity.TestCode;
+﻿using PurityCodeQualityMetrics.Purity;
+
+namespace PurityCodeQualityMetrics.Tests.Purity.TestCode;
 
 public class CyclesTestClass
 {
     private int member = 5;
     
+    [ViolationsTest(PurityViolation.ReadsLocalState)]
     public void Func1()
     {
         var x  = member;
@@ -18,9 +21,10 @@ public class CyclesTestClass
     public void Func3()
     {
         Func1();
-        
+
     }
     
+    [ViolationsTest(PurityViolation.ModifiesLocalState)]
     public void Func4()
     {
         Func2();

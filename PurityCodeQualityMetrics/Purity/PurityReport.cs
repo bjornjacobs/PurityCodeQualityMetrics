@@ -8,7 +8,7 @@ public enum PurityViolation
 {
     //Minor
     ThrowsException = 1,
-    ModifiesParameters = 2,
+    ModifiesParameter = 2,
     
     //Local
     ModifiesLocalState = 10,

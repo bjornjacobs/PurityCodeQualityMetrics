@@ -21,9 +21,4 @@ public static class GeneralUtil
             var kind => MethodType.Method,
         };
     }
-
-    public static bool IsSimpleProperty(this PropertyDeclarationSyntax property)
-    {
-        return false;
-    }
 }

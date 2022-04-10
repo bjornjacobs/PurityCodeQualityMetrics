@@ -33,7 +33,7 @@ public class PurityScore
             return;
         }
 
-        if (Violations.Any(x => x.Violation is PurityViolation.ModifiesParameters))
+        if (Violations.Any(x => x.Violation is PurityViolation.ModifiesParameter))
         {
             Puritylevel = Puritylevel.ParameteclyImpure;
             return;

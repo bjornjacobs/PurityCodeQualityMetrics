@@ -20,25 +20,25 @@ public class Program
 
                 var l = new LandkroonInterface(factory.CreateLogger<LandkroonInterface>(), analyser, calculator);
                // await l.Run(@"C:\Users\BjornJ\dev\repos\jellyfin",  new List<string>(){"Jellyfin.sln", "MediaBrowser.sln"});
-                await l.Run(@"C:\Users\BjornJ\dev\repos\akka.net",  new List<string>(){"src\\Akka.sln"});
+             //   await l.Run(@"C:\Users\BjornJ\dev\repos\akka.net",  new List<string>(){"src\\Akka.sln"});
                 
                 
-                return;
+        
                // GitInterface.Main();
                 
                 o.Project =
-                    @"C:\Users\BjornJ\dev\PurityCodeQualityMetrics\PurityCodeQualityMetrics\PurityCodeQualityMetrics.csproj";
-                //  o.Project = @"C:\Users\BjornJ\dev\PureTest\PureTest.csproj";
+                    @"C:\Users\BjornJ\dev\PurityCodeQualityMetrics\PurityCodeQualityMetrics\PurityCodeQualityMetrics.csproj"; 
+                o.Project = @"C:\Users\BjornJ\dev\PureTest\PureTest.csproj";
 
-                o.Project = @"C:\Users\BjornJ\dev\PurityCodeQualityMetrics\PurityCodeQualityMetrics.sln";
+              //  o.Project = @"C:\Users\BjornJ\dev\PurityCodeQualityMetrics\PurityCodeQualityMetrics.sln";
 
                
                 var repo = new EfPurityRepo();
-                repo.Clear();
+               // repo.Clear();
 
                 var analyzer = new PurityAnalyser(factory.CreateLogger<PurityAnalyser>());
 
-                var purityReports = await analyzer.GeneratePurityReports(o.Project);
+                var purityReports = await analyzer.GeneratePurityReportsProject(o.Project);
                 repo.AddRange(purityReports);
 
 

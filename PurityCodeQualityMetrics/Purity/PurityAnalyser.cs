@@ -15,14 +15,12 @@ namespace PurityCodeQualityMetrics.Purity;
 
 public class PurityAnalyser
 {
-    private ILogger _logger;
+    private readonly ILogger _logger;
 
     private readonly List<IViolationPolicy> _violationsPolicies = new List<IViolationPolicy>
     {
         new ThrowsExceptionViolationPolicy(),
-        new StaticFieldViolationPolicy(),
-        new LocalPurityPolicy(),
-        new ParameterViolationPolicy()
+        new IdentifierViolationPolicy()
     };
 
     public PurityAnalyser(ILogger logger)
