@@ -1,10 +1,9 @@
 ﻿using System.Globalization;
 using System.IO;
-using CodeQualityAnalyzer;
-using CodeQualityAnalyzer.CodeMetrics;
 using CsvHelper;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using PurityCodeQualityMetrics.Git;
 using PurityCodeQualityMetrics.Purity;
 
 namespace PurityCodeQualityMetrics;

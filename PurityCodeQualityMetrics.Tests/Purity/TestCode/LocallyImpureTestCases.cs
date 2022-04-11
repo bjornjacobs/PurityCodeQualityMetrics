@@ -5,10 +5,11 @@ namespace PurityCodeQualityMetrics.Tests.Purity.TestCode;
 public class LocallyImpureTestClass
 {
     private int _member;
+    private int _property;
     private static int Global = 5;
 
     [ViolationsTest(PurityViolation.ReadsLocalState, PurityViolation.ModifiesLocalState)]
-    public int LocallyImpure()
+    public int LocallyImpureTest()
     {
         _member = 1;
         return _member;
@@ -35,5 +36,24 @@ public class LocallyImpureTestClass
         var y = 3;
         x = x + y;
         y = Global;
+    }
+    
+    [ViolationsTest(PurityViolation.ReadsLocalState)]
+    public void OnlyGetOneViolation()
+    {
+        var x = _member;
+        x = 5;
+    }
+    
+    [ViolationsTest(PurityViolation.ReadsLocalState)]
+    public void PropertyReadTest()
+    {
+        var d = _property;
+    }
+    
+    [ViolationsTest(PurityViolation.ModifiesLocalState)]
+    public void PropertyWriteTest()
+    {
+        _property = 5;
     }
 }

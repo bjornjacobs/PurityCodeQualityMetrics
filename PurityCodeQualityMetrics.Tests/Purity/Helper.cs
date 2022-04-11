@@ -23,24 +23,28 @@ public class Helper
     {
         await Semaphore.WaitAsync();
 
-        if (_cache != null)
+        try
         {
-            Semaphore.Release();
+            if (_cache != null) return _cache;
+            
+            if (!MSBuildLocator.IsRegistered)
+                MSBuildLocator.RegisterDefaults();
+
+            //Load itself to get reports for testclasses
+            var dir = Directory.GetCurrentDirectory();
+            const string projectDir = "PurityCodeQualityMetrics";
+            const string testPath = "/PurityCodeQualityMetrics.Tests/PurityCodeQualityMetrics.Tests.csproj";
+
+            var testProject = dir.Split(projectDir).First() + projectDir + testPath;
+            _cache = await _sut.GeneratePurityReportsProject(testProject);
+
             return _cache;
         }
+        finally
+        {
+            Semaphore.Release(); 
+        }
 
-        if (!MSBuildLocator.IsRegistered)
-            MSBuildLocator.RegisterDefaults();
-
-        //Load itself to get reports for testclasses
-        var dir = Directory.GetCurrentDirectory();
-        const string projectDir = "PurityCodeQualityMetrics";
-        const string testPath = "/PurityCodeQualityMetrics.Tests/PurityCodeQualityMetrics.Tests.csproj";
-
-        var testProject = dir.Split(projectDir).First() + projectDir + testPath;
-        _cache = await _sut.GeneratePurityReportsProject(testProject);
-        Semaphore.Release();
-        return _cache;
     }
 
     public static object[] GenerateTestData(string methodName, params PurityViolation[] violations)

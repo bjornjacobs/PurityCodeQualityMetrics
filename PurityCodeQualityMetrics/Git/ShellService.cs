@@ -1,7 +1,6 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
-namespace CodeQualityAnalyzer
+namespace PurityCodeQualityMetrics.Git
 {
     public class ShellService
     {

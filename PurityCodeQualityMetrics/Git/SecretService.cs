@@ -1,7 +1,6 @@
-﻿using System.IO;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
-namespace CodeQualityAnalyzer
+namespace PurityCodeQualityMetrics.Git
 {
     internal static class SecretService
     {

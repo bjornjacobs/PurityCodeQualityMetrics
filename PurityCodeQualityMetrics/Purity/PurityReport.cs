@@ -9,6 +9,7 @@ public enum PurityViolation
     //Minor
     ThrowsException = 1,
     ModifiesParameter = 2,
+    ModifiesNonFreshObject = 3,
     
     //Local
     ModifiesLocalState = 10,
@@ -19,14 +20,6 @@ public enum PurityViolation
     ModifiesGlobalState = 21,
     
     UnknownMethod = 30,
-}
-
-public enum Scoping
-{
-    Local,
-    Parameter,
-    Field,
-    Global
 }
 
 public enum MethodType
@@ -110,7 +103,6 @@ public class MethodDependency
 
 
     //Dependency information
-    public Scoping Scoping { get; private set; }
     public bool ReturnShouldBeFresh { get; set; }
     public bool FreshDependsOnMethodReturnIsFresh { get; set; }
 
@@ -118,16 +110,15 @@ public class MethodDependency
     {
     }
 
-    public MethodDependency(string name, Scoping scoping)
+    public MethodDependency(string name)
     {
         Name = name;
         Namespace = "UNKNOWN";
         FullName = Namespace + "." + name;
-        Scoping = scoping;
         ReturnType = "UNKnOWN";
     }
 
-    public MethodDependency(string name, string @namespace, string returnType, List<string> parameterTypes, MethodType methodType, bool isInterface, Scoping scoping, bool returnShouldBeFresh)
+    public MethodDependency(string name, string @namespace, string returnType, List<string> parameterTypes, MethodType methodType, bool isInterface, bool returnShouldBeFresh)
     {
         Name = name;
         Namespace = @namespace;
@@ -136,7 +127,6 @@ public class MethodDependency
         ParameterTypes = parameterTypes;
         MethodType = methodType;
         IsInterface = isInterface;
-        Scoping = scoping;
         ReturnShouldBeFresh = returnShouldBeFresh;
     }
 

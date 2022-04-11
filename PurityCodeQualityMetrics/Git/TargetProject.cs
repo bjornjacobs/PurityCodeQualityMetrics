@@ -1,4 +1,4 @@
-namespace CodeQualityAnalyzer
+namespace PurityCodeQualityMetrics.Git
 {
     class TargetProject
     {

@@ -1,4 +1,4 @@
-﻿namespace PurityCodeQualityMetrics.Purity;
+﻿namespace PurityCodeQualityMetrics.Purity.Storage;
 
 public interface IPurityReportRepo
 {

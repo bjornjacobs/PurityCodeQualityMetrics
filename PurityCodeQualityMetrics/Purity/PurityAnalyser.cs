@@ -141,7 +141,7 @@ public class PurityAnalyser
                     _logger.LogWarning($"Could not find symbol for {c.ToString()}");
                 }
  
-                return new MethodDependency(c.ToString(), Scoping.Field);
+                return new MethodDependency(c.ToString());
             }
 
 
@@ -157,7 +157,6 @@ public class PurityAnalyser
                 symbol.Parameters.Select(x => x.Type.ToUniqueString()).ToList(),
                 symbol.MethodKind.ToMethodType(),
                 symbol.IsAbstract,
-                Scoping.Field,
                 false);
         }).ToList();
     }

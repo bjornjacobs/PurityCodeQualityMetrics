@@ -1,17 +1,12 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using Newtonsoft.Json;
 using RestSharp;
 
-
-namespace CodeQualityAnalyzer
+namespace PurityCodeQualityMetrics.Git
 {
     internal class GithubService : IIssueTrackerService
     {

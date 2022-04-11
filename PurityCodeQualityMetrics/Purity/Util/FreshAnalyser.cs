@@ -1,9 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.FindSymbols;
-using PurityCodeQualityMetrics.Purity.Util;
 
-namespace PurityCodeQualityMetrics.Purity;
+namespace PurityCodeQualityMetrics.Purity.Util;
 
 public static class FreshAnalyser
 {
@@ -40,7 +38,6 @@ public static class FreshAnalyser
                         methodRef.Parameters.Select(x => x.Type.ToUniqueString()).ToList(),
                         methodRef.MethodKind.ToMethodType(),
                         methodRef.IsAbstract,
-                        Scoping.Field,
                         true));
                 
                 continue;

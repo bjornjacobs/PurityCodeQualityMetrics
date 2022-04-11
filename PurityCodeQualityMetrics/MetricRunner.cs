@@ -1,18 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Build.Locator;
+﻿using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.Extensions.Logging;
-using PurityCodeQualityMetrics;
+using PurityCodeQualityMetrics.CodeMetrics;
 using PurityCodeQualityMetrics.Purity;
 using PurityCodeQualityMetrics.Purity.Storage;
 
-namespace CodeQualityAnalyzer.CodeMetrics
+namespace PurityCodeQualityMetrics
 {
     public class MetricRunner
     {

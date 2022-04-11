@@ -1,7 +1,6 @@
-﻿using System;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace CodeQualityAnalyzer.CodeMetrics
+namespace PurityCodeQualityMetrics.CodeMetrics
 {
     public static class CommentDensity
     {

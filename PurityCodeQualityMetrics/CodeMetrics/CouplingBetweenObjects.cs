@@ -1,13 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Diagnostics.CodeAnalysis;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Text;
 
-namespace CodeQualityAnalyzer.CodeMetrics
+namespace PurityCodeQualityMetrics.CodeMetrics
 {
+    [SuppressMessage("MicrosoftCodeAnalysisCorrectness", "RS1024:Symbols should be compared for equality")]
     public static class CouplingBetweenObjects
     {
         public static int GetCount(SyntaxNode classNode, SemanticModel model, Dictionary<INamedTypeSymbol, int> classCouplings)

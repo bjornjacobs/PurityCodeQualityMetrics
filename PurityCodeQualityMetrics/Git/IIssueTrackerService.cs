@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace CodeQualityAnalyzer
+﻿namespace PurityCodeQualityMetrics.Git
 {
     public interface IIssueTrackerService
     {

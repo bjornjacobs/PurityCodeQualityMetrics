@@ -1,5 +1,6 @@
 ﻿using CommandLine;
 using PurityCodeQualityMetrics.Purity;
+using PurityCodeQualityMetrics.Purity.Storage;
 using PurityCodeQualityMetrics.Purity.Util;
 
 namespace PurityCodeQualityMetrics;

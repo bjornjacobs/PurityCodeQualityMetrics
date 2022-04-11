@@ -53,7 +53,7 @@ public static class SyntaxNodeUtil
         return method.DescendantNodes().OfType<LambdaExpressionSyntax>().ToList().FindIndex(node.IsEquivalentTo);
     }
     
-    public static List<CSharpSyntaxNode> GetAllMethods(this SyntaxTree tree)
+    public static List<CSharpSyntaxNode> GetAllMethods(this SyntaxTree tree, bool includeProperties = false)
     {
         var methods = tree.GetRoot()
             .DescendantNodes()
@@ -68,9 +68,16 @@ public static class SyntaxNodeUtil
             .OfType<LambdaExpressionSyntax>()
             .Cast<CSharpSyntaxNode>();
 
-        var properties = tree.GetRoot().DescendantNodes().OfType<AccessorDeclarationSyntax>();
+        var val = local.Concat(methods).Concat(lambda);
+        
+        if (includeProperties)
+        {
+            var properties = tree.GetRoot().DescendantNodes().OfType<AccessorDeclarationSyntax>();
+            val = val.Concat(properties);
+        }
 
-        return local.Concat(methods).Concat(lambda).Concat(properties).ToList();
+
+        return val.ToList();
     }
 
     /// <summary>
@@ -80,7 +87,7 @@ public static class SyntaxNodeUtil
     /// <returns>All nodes that are defined in the given function</returns>
     public static IEnumerable<SyntaxNode> DescendantNodesInThisFunction(this SyntaxNode function)
     {
-        if (function is MethodDeclarationSyntax m)
+        if (function is MethodDeclarationSyntax m && m.Body != null)
         {
             function = m.Body;
         }

@@ -1,6 +1,4 @@
-﻿using PurityCodeQualityMetrics.Purity;
-
-namespace PurityCodeQualityMetrics;
+﻿namespace PurityCodeQualityMetrics.Purity;
 
 public class PurityScore
 {

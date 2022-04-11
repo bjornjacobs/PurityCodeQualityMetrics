@@ -1,7 +1,4 @@
-using System.Collections.Generic;
-using CodeQualityAnalyzer.CodeMetrics;
-
-namespace CodeQualityAnalyzer
+namespace PurityCodeQualityMetrics.Git
 {
     class OutputRow
     {

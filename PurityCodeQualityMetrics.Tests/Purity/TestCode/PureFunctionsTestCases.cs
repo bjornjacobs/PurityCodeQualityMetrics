@@ -25,4 +25,14 @@ public class PureFunctionsTestCases
     {
         return new List<int> {5, 5, 5}.Select(x => x * x).Aggregate((a, b) => a + b);
     }
+    
+    [ViolationsTest]
+    public object PureFunctionWithImpureLamdba()
+    {
+        return new List<int> {5, 5, 5}.Where(x =>
+        {
+            GloballyImpureTestClass2.PublicState = 5;
+            return true;
+        });
+    }
 }
