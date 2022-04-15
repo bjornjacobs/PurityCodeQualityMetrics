@@ -29,8 +29,6 @@ public class DatabaseContext : DbContext
 
 public class EfPurityRepo : IPurityReportRepo
 {
-    
-    
     public PurityReport? GetByName(string name)
     {
         using var db = new DatabaseContext();
@@ -71,6 +69,22 @@ public class EfPurityRepo : IPurityReportRepo
             db.Reports.Add(report);
             db.SaveChanges();
         }
+    }
+
+    public void RemoveClassesInFiles(List<string> path)
+    {
+        using var db = new DatabaseContext();
+        
+        var toRemove = db.Reports
+            .Where(x => path.Any(y => x.FilePath.StartsWith(y, StringComparison.CurrentCultureIgnoreCase)))
+            .Include(x => x.Dependencies);
+        
+        foreach (var remove in toRemove)
+        {
+            db.Dependencies.RemoveRange(remove.Dependencies);
+            db.Reports.Remove(remove);
+        }
+        db.SaveChanges();
     }
     
     public void Clear()

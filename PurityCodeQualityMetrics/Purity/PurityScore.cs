@@ -36,6 +36,12 @@ public class PurityScore
             Puritylevel = Puritylevel.ParameteclyImpure;
             return;
         }
+        
+        if (Violations.Any(x => x.Violation is PurityViolation.ModifiesNonFreshObject))
+        {
+            Puritylevel = Puritylevel.NonFreshObjectImpure;
+            return;
+        }
 
         if (Violations.Any(x => x.Violation is PurityViolation.ThrowsException))
         {
@@ -52,6 +58,7 @@ public enum Puritylevel
     Pure,
     ThrowsException,
     LocallyImpure,
+    NonFreshObjectImpure,
     Impure,
     ParameteclyImpure
 }

@@ -87,6 +87,8 @@ public static class SyntaxNodeUtil
     /// <returns>All nodes that are defined in the given function</returns>
     public static IEnumerable<SyntaxNode> DescendantNodesInThisFunction(this SyntaxNode function)
     {
+        if (function == null) return new List<SyntaxNode>();
+        
         if (function is MethodDeclarationSyntax m && m.Body != null)
         {
             function = m.Body;

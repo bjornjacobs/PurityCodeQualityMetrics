@@ -1,4 +1,4 @@
-﻿namespace PurityCodeQualityMetrics.Git
+﻿namespace PurityCodeQualityMetrics.GitCrawler.Issue
 {
     public interface IIssueTrackerService
     {

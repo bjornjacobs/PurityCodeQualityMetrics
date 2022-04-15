@@ -40,7 +40,7 @@ namespace PurityCodeQualityMetrics
 
             var scores = new PurityCalculator(LoggerFactory
                     .Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Critical)).CreateLogger(""))
-                .CalculateScores(reports);
+                .CalculateScores(reports, (x,y) => null);
    
 
             foreach (Project project in projects)

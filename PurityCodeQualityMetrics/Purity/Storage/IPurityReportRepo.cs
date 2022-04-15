@@ -9,5 +9,7 @@ public interface IPurityReportRepo
 
     public void AddRange(IEnumerable<PurityReport> reports);
 
+    void RemoveClassesInFiles(List<string> path);
+
     public void Clear();
 }

@@ -1,6 +1,6 @@
-namespace PurityCodeQualityMetrics.Git
+namespace PurityCodeQualityMetrics.GitCrawler
 {
-    class TargetProject
+    public class TargetProject
     {
         public string OrganizationName;
         public string RepositoryName;

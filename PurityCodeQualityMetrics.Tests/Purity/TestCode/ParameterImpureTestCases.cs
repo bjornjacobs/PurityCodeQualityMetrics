@@ -10,7 +10,7 @@ public class ParameterImpure
         poco.Field = 5;
     }
     
-    [ViolationsTest(PurityViolation.ModifiesParameter)]
+    [ViolationsTest(PurityViolation.ModifiesParameter)] 
     public void EditParameterProperty(Poco poco)
     {
         poco.Property = 5;

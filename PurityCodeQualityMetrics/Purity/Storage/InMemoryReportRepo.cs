@@ -25,6 +25,11 @@ public class InMemoryReportRepo : IPurityReportRepo
         _reports.AddRange(reports);
     }
 
+    public void RemoveClassesInFiles(List<string> path)
+    {
+        var amount = _reports.RemoveAll(x => path.Any(y => x.FilePath.EndsWith(y, StringComparison.CurrentCultureIgnoreCase)));
+    }
+
     public void Clear()
     {
         _reports.Clear();

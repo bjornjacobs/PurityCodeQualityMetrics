@@ -13,7 +13,7 @@ public class PurityCalculator
         _logger = logger;
     }
 
-    public List<PurityScore> CalculateScores(List<PurityReport> reports)
+    public List<PurityScore> CalculateScores(List<PurityReport> reports, Func<MethodDependency, PurityReport, PurityReport?> GetUnknown)
     {
         _table.Clear();
         _logger.LogInformation("Starting calculating scores");
@@ -36,9 +36,9 @@ public class PurityCalculator
         
         //Calculate the purity per component
         var finder = (string name) => reports.FirstOrDefault(x => x.FullName == name);
-        return components.SelectMany(x => CalculateScore(x.Select(finder).Where(x => x != null).ToList()!, finder)).ToList();
+        return components.SelectMany(x => CalculateScoreForComponent(x.Select(finder).Where(x => x != null).ToList()!, finder, GetUnknown)).ToList();
     }
-    private List<PurityScore> CalculateScore(List<PurityReport> component, Func<string, PurityReport?> getReport)
+    private List<PurityScore> CalculateScoreForComponent(List<PurityReport> component, Func<string, PurityReport?> getReport, Func<MethodDependency, PurityReport, PurityReport?> GetUnknown)
     {
        // var violations = component.SelectMany(x => x.Violations).ToList();
         var scores = component.Select(x => new PurityScore(x, new List<(int Distance, PurityViolation Violation)>())).ToList();
@@ -59,9 +59,21 @@ public class PurityCalculator
                 score.Violations.AddRange(d.Violations.Select(x => (dis, x)));
             }
 
+            PurityScore? GetUnknownScore(MethodDependency d)
+            {
+                var report = GetUnknown(d, score.Report);
+                if (report == null) return null;
+                
+                var s = new PurityScore(report, report.Violations.Select(x => (1, x)).ToList());
+                s.ReturnIsFresh = report.ReturnValueIsFresh;
+                s.CalculateLevel();
+                _table[d.FullName] = s;
+                return s;
+            }
+            
             var depsOutside = score.Report.Dependencies
                 .Where(x => component.All(y => x.FullName != y.FullName))
-                .Select(x => _table.GetValueOrDefault(x.FullName)).ToList();
+                .Select(x => _table.GetValueOrDefault(x.FullName) ?? GetUnknownScore(x)).ToList();
 
             score.Violations.AddRange(
                 depsOutside

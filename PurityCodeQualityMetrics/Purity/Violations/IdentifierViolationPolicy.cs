@@ -15,7 +15,7 @@ public class IdentifierViolationPolicy : IViolationPolicy
             .Select(x => new {Node = x, model.GetSymbolInfo(x).Symbol})
             .Where(x => x.Symbol != null)
             .Where(x => x.Node.IsTopLevel() || x.Symbol!.IsStatic)
-            .Select(x =>
+            .Select(x => //UnkownMethod here is used as a surrogate for 'no violation found'
             {
                 
                 var symbol = x.Symbol!;
@@ -34,18 +34,15 @@ public class IdentifierViolationPolicy : IViolationPolicy
                 {
                     return x.Node.IsAssignedTo() ? PurityViolation.ModifiesLocalState : PurityViolation.ReadsLocalState;
                 }
-                
                 //Check if lambda or local function uses parameters of containing method
                 if(symbol is IParameterSymbol && !SymbolEqualityComparer.Default.Equals(symbol.ContainingSymbol, ms))
                 {
                     return x.Node.IsAssignedTo() ? PurityViolation.ModifiesLocalState : PurityViolation.ReadsLocalState;
                 }
-
-                if (symbol is IParameterSymbol)
+                if (symbol is IParameterSymbol && x.Node.IsAssignedToField()  && type.IsReferenceType )
                 {
-                    return x.Node.IsAssignedToField() && type.IsReferenceType ? PurityViolation.ModifiesParameter : PurityViolation.UnknownMethod;
+                    return PurityViolation.ModifiesParameter;
                 }
-
                 if (symbol is ILocalSymbol ls && ls.IsFresh(x.Node, model) == false  && x.Node.IsAssignedToField() && type.IsReferenceType )
                 {
                     return PurityViolation.ModifiesNonFreshObject;

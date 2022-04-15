@@ -1,10 +1,27 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics", "PurityCodeQualityMetrics\PurityCodeQualityMetrics.csproj", "{0BA5BC48-C045-4F86-97AB-31930E7AAAFD}"
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32210.238
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PurityCodeQualityMetrics", "PurityCodeQualityMetrics\PurityCodeQualityMetrics.csproj", "{0BA5BC48-C045-4F86-97AB-31930E7AAAFD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics.Tests", "PurityCodeQualityMetrics.Tests\PurityCodeQualityMetrics.Tests.csproj", "{4B8BBD04-133D-4477-824C-69551884CFF2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PurityCodeQualityMetrics.Tests", "PurityCodeQualityMetrics.Tests\PurityCodeQualityMetrics.Tests.csproj", "{4B8BBD04-133D-4477-824C-69551884CFF2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics.Ui", "PurityCodeQualityMetrics.Ui\PurityCodeQualityMetrics.Ui.csproj", "{0377EEE5-EAA4-45D3-9AF5-0F69A876AF0F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PurityCodeQualityMetrics.Ui", "PurityCodeQualityMetrics.Ui\PurityCodeQualityMetrics.Ui.csproj", "{0377EEE5-EAA4-45D3-9AF5-0F69A876AF0F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics.Analyzer", "PurityCodeQualityMetrics.Analyzer\PurityCodeQualityMetrics.Analyzer\PurityCodeQualityMetrics.Analyzer.csproj", "{250C460F-57B3-4040-847B-1B4F67C0CC4D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics.Analyzer.CodeFixes", "PurityCodeQualityMetrics.Analyzer\PurityCodeQualityMetrics.Analyzer.CodeFixes\PurityCodeQualityMetrics.Analyzer.CodeFixes.csproj", "{8E814BFB-196E-41A6-8D04-BCDAEEF73521}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics.Analyzer.Package", "PurityCodeQualityMetrics.Analyzer\PurityCodeQualityMetrics.Analyzer.Package\PurityCodeQualityMetrics.Analyzer.Package.csproj", "{0758728D-DD4A-4DF3-8CE5-A9F79B3AAC82}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics.Analyzer.Test", "PurityCodeQualityMetrics.Analyzer\PurityCodeQualityMetrics.Analyzer.Test\PurityCodeQualityMetrics.Analyzer.Test.csproj", "{C55C288B-F23D-4558-87F5-80B49B133319}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics.Analyzer.Vsix", "PurityCodeQualityMetrics.Analyzer\PurityCodeQualityMetrics.Analyzer.Vsix\PurityCodeQualityMetrics.Analyzer.Vsix.csproj", "{0EED5B00-DCA0-4DCF-AEE4-3BD0CB599EE3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics.GitCrawler", "PurityCodeQualityMetrics.GitCrawler\PurityCodeQualityMetrics.GitCrawler.csproj", "{3889BE4E-FF57-4032-9E9D-182F65BFEBBB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugin", "Plugin", "{D69B195C-A2F1-4F89-9ADE-B297ED554C10}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,5 +41,42 @@ Global
 		{0377EEE5-EAA4-45D3-9AF5-0F69A876AF0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0377EEE5-EAA4-45D3-9AF5-0F69A876AF0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0377EEE5-EAA4-45D3-9AF5-0F69A876AF0F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{250C460F-57B3-4040-847B-1B4F67C0CC4D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{250C460F-57B3-4040-847B-1B4F67C0CC4D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{250C460F-57B3-4040-847B-1B4F67C0CC4D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{250C460F-57B3-4040-847B-1B4F67C0CC4D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E814BFB-196E-41A6-8D04-BCDAEEF73521}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E814BFB-196E-41A6-8D04-BCDAEEF73521}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E814BFB-196E-41A6-8D04-BCDAEEF73521}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E814BFB-196E-41A6-8D04-BCDAEEF73521}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0758728D-DD4A-4DF3-8CE5-A9F79B3AAC82}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0758728D-DD4A-4DF3-8CE5-A9F79B3AAC82}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0758728D-DD4A-4DF3-8CE5-A9F79B3AAC82}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0758728D-DD4A-4DF3-8CE5-A9F79B3AAC82}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C55C288B-F23D-4558-87F5-80B49B133319}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C55C288B-F23D-4558-87F5-80B49B133319}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C55C288B-F23D-4558-87F5-80B49B133319}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C55C288B-F23D-4558-87F5-80B49B133319}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0EED5B00-DCA0-4DCF-AEE4-3BD0CB599EE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0EED5B00-DCA0-4DCF-AEE4-3BD0CB599EE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0EED5B00-DCA0-4DCF-AEE4-3BD0CB599EE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0EED5B00-DCA0-4DCF-AEE4-3BD0CB599EE3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3889BE4E-FF57-4032-9E9D-182F65BFEBBB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3889BE4E-FF57-4032-9E9D-182F65BFEBBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3889BE4E-FF57-4032-9E9D-182F65BFEBBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3889BE4E-FF57-4032-9E9D-182F65BFEBBB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3F799820-84D1-4EF1-97A7-60261F95BA6C}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{250C460F-57B3-4040-847B-1B4F67C0CC4D} = {D69B195C-A2F1-4F89-9ADE-B297ED554C10}
+		{8E814BFB-196E-41A6-8D04-BCDAEEF73521} = {D69B195C-A2F1-4F89-9ADE-B297ED554C10}
+		{0758728D-DD4A-4DF3-8CE5-A9F79B3AAC82} = {D69B195C-A2F1-4F89-9ADE-B297ED554C10}
+		{C55C288B-F23D-4558-87F5-80B49B133319} = {D69B195C-A2F1-4F89-9ADE-B297ED554C10}
+		{0EED5B00-DCA0-4DCF-AEE4-3BD0CB599EE3} = {D69B195C-A2F1-4F89-9ADE-B297ED554C10}
 	EndGlobalSection
 EndGlobal

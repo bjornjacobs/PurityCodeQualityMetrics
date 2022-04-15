@@ -1,12 +1,10 @@
-﻿using System.Globalization;
-using System.Text.RegularExpressions;
-using CsvHelper;
-using LibGit2Sharp;
+﻿using LibGit2Sharp;
 using Microsoft.Extensions.Logging;
 using PurityCodeQualityMetrics.Purity;
 using PurityCodeQualityMetrics.Purity.Storage;
+using Commit = LibGit2Sharp.Commit;
 
-namespace PurityCodeQualityMetrics;
+namespace PurityCodeQualityMetrics.GitCrawler;
 
 public class LandkroonInterface
 {
@@ -24,24 +22,26 @@ public class LandkroonInterface
         _purityReportRepo = new InMemoryReportRepo();
     }
 
-    public async Task Run(string repoPath, List<string> solutionFile)
+    public async Task Run(string repoPath, List<string> solutionFile, string mainBranch)
     {
         //Get commits/ with issues
         var repo = new Repository(repoPath);
+        repo.Reset(ResetMode.Hard, mainBranch);
         
         var bugCommits = repo.Commits
-            .Where(x => x.Message.Contains("bug", StringComparison.CurrentCultureIgnoreCase))
+         //   .Where(x => x.Message.Contains("bug", StringComparison.CurrentCultureIgnoreCase))
             .ToList();
+        
         
 
 
         foreach (var b in bugCommits)
         {
+            Console.WriteLine($"{b.MessageShort}");
             var parents = b.Parents.ToList();
 
             _logger.LogInformation($"Checking out commit {b.MessageShort} this has {parents.Count} parents");
-
-
+      
             if (parents.Count == 1)
             {
                 var p = parents.First();
@@ -50,10 +50,26 @@ public class LandkroonInterface
                     .Select(x => x.Replace('/', '\\')).ToList();
                 
                 var diffs = repo.Diff.Compare<Patch>(b.Tree, p.Tree).ToList();
+                var changes =  diffs.SelectMany(x => x.GetFileChangesFromPatch()).ToList();
+                _purityReportRepo.RemoveClassesInFiles(changes.Select(x => x.Path).ToList());
                 _logger.LogInformation($"Checking out parent {p.MessageShort} - {diffs.Count}");
-              //  Commands.Checkout(repo, p);
+                
+                Commands.Checkout(repo, b);
+                lastState = b;
+
+                Console.WriteLine("\tAfter");
+                await CheckMethods(solutionFile.Select(x => Path.Combine(repoPath, x)).ToList(), changes.Select(x => x.Added).ToList(), stateDff);
+                
+                
+                Commands.Checkout(repo, p);
                 lastState = p;
-                await CheckMethods(solutionFile.Select(x => Path.Combine(repoPath, x)).ToList(), diffs, stateDff);
+          
+                Console.WriteLine("\tBefore");
+                await CheckMethods(solutionFile.Select(x => Path.Combine(repoPath, x)).ToList(), changes.Select(x => x.Removed).ToList(), stateDff);
+
+                
+                
+                Console.WriteLine();
             }
             else
             {
@@ -62,49 +78,36 @@ public class LandkroonInterface
         }
     }
 
-    public async Task CheckMethods(List<string> solutionPaths, List<PatchEntryChanges> changesList, List<string> filesToCheck)
+    public async Task CheckMethods(List<string> solutionPaths, List<LinesChange> changesList, List<string> filesToCheck)
     {
         try
         {
             var solutionPath = solutionPaths.FirstOrDefault(File.Exists);
             
-            var changes = changesList.Select(x => x.Path)
-                .Select(x => x.Replace('/', '\\'))
-                .Where((x => x.EndsWith(".cs", StringComparison.CurrentCultureIgnoreCase)))
-                .ToList();
-            
-            if (!changes.Any())
+            if (!changesList.Any(x => x.Path.EndsWith(".cs", StringComparison.CurrentCultureIgnoreCase)))
             {
                 _logger.LogInformation("No c# file changed");
                 return;
             }
 
-            var potentialMethodsChanged = changesList
-                .SelectMany(x => x.Patch.Split(new []{"\r\n", "\n"}, StringSplitOptions.None))
-                .Where(x => x.StartsWith("-"))
-                .Select(x => Regex.Matches(x, @"[a-zA-Z]*\s*[a-zA-Z]*\s*\("))
-                .SelectMany(x => x.Select(x => x.Value)).ToList();
-
-            var reports = await _purityAnalyser.GeneratePurityReports(solutionPath, filesToCheck);
+            var reports = await _purityAnalyser.GeneratePurityReports(solutionPath, filesToCheck, false);
             _purityReportRepo.AddRange(reports);
-            var scores = _purityCalculator.CalculateScores(_purityReportRepo.GetAllReports());
-            /*
-             *   val patchMatch = """@@ -((\d*),(\d*)) \+((\d*),(\d*)) @@""".r findAllMatchIn  patchValue
-            patchMatch.foldLeft(List[(Int, Int, Int, Int)]()){
-              (a, value) =>
-                val startLineDel = value.group(2).toInt
-                val stopLineDel = value.group(2).toInt + value.group(3).toInt
-                val startLineAdd = value.group(5).toInt
-                val stopLineAdd = value.group(5).toInt + value.group(6).toInt
-             */
-            
-            
-            var changedScores = scores.Where(x => true ||
-                    changes.Any(y => x.Report.FilePath.Contains(y, StringComparison.CurrentCultureIgnoreCase))
-                    && potentialMethodsChanged.Any(y => y.Contains(x.Report.Name.Split(".")[1])))
-                .ToList();
-            WriteData(changedScores);
+            var scores = _purityCalculator.CalculateScores(_purityReportRepo.GetAllReports(),(dep, context) =>
+            {
+                //Check if context actually needed.eg is in change list
+                if (!context.ReportInChanges(changesList))
+                    return null;
+                
+                
+                var userGenerated = MissingMethodInput.FromConsole(dep);
+                if (userGenerated == null) return null;
+                _purityReportRepo.AddRange(new []{userGenerated});
+                return userGenerated;   
+            });
 
+            var changedScores = changesList.GetChangedReports(scores);
+            changedScores.ForEach(x => Console.WriteLine($"\t\t{x.Report.Name} - {x.Violations.Count} - {x.Puritylevel}"));
+          //  WriteData(changedScores);
         }
         catch (Exception e)
         {

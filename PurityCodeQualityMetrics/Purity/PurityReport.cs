@@ -44,6 +44,8 @@ public class PurityReport
     public MethodType MethodType { get; set; }
     
     public string FilePath { get; set; }
+    public int LineStart { get; set; }
+    public int LineEnd { get; set; }
     
     [NotMapped] public List<string> ParameterTypes { get; set; } = null!;
     
@@ -105,6 +107,9 @@ public class MethodDependency
     //Dependency information
     public bool ReturnShouldBeFresh { get; set; }
     public bool FreshDependsOnMethodReturnIsFresh { get; set; }
+    
+    
+
 
     public MethodDependency()
     {

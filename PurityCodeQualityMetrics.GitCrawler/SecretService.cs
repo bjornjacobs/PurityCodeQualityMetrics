@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace PurityCodeQualityMetrics.Git
+namespace PurityCodeQualityMetrics.GitCrawler
 {
     internal static class SecretService
     {

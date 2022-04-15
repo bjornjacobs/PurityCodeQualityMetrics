@@ -33,7 +33,7 @@ public class PurityAnalyser
         return await GeneratePurityReports(solution, new List<string>());
     }
     
-    public async Task<List<PurityReport>> GeneratePurityReports(string solution, List<string> files)
+    public async Task<List<PurityReport>> GeneratePurityReports(string solution, List<string> files, bool ignoreTestProject = true)
     { 
         _logger.LogInformation("Starting compilation");
         if(!MSBuildLocator.IsRegistered)
@@ -47,8 +47,8 @@ public class PurityAnalyser
     
         _logger.LogInformation($"Loaded project: {solution}");
         return currentSolution.Projects
-            .Where(x => !x.Name.Contains("test", StringComparison.CurrentCultureIgnoreCase))
-            .SelectMany(x => AnalyseProject(x, currentSolution, files)).ToList();
+            .Where(x => !ignoreTestProject || !x.Name.Contains("test", StringComparison.CurrentCultureIgnoreCase))
+            .SelectMany(x => AnalyseProject(x, currentSolution, files)).AsParallel().ToList();
     }
     
     public async Task<List<PurityReport>> GeneratePurityReportsProject(string projectFile)
@@ -104,6 +104,10 @@ public class PurityAnalyser
             workingSymbol.ReturnType.ToUniqueString(),
             workingSymbol.Parameters.Select(x => x.Type.ToUniqueString())
                 .ToList());
+
+        report.FilePath = path;
+        report.LineStart = m.GetLocation().GetLineSpan().Span.Start.Line + 1;
+        report.LineEnd = m.GetLocation().GetLineSpan().Span.End.Line + 1;
 
         var freshResult = m.IsReturnFresh(model, solution);
         report.FilePath = path;

@@ -45,11 +45,11 @@ public class ConsoleInterface
             }
         }
 
-        var unknown = repo.GetAllReports().GetAllUnkownMethods().OrderBy(x => x).ToList();
+        var unknown = repo.GetAllReports().GetAllUnkownMethods().OrderBy(x => x.Name).ToList();
         if (unknown.Any())
         {
             Console.WriteLine($" Unknown methods {unknown.Count}:");
-            unknown.ForEach(x => Console.WriteLine($"  - {x}"));
+            unknown.ForEach(x => Console.WriteLine($"  - {x.Name}"));
         }
         else
         {
