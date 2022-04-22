@@ -1,6 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -8,6 +9,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.Extensions.Logging;
+using PurityCodeQualityMetrics.CodeMetrics;
 using PurityCodeQualityMetrics.Purity.Util;
 using PurityCodeQualityMetrics.Purity.Violations;
 
@@ -108,6 +110,15 @@ public class PurityAnalyser
         report.FilePath = path;
         report.LineStart = m.GetLocation().GetLineSpan().Span.Start.Line + 1;
         report.LineEnd = m.GetLocation().GetLineSpan().Span.End.Line + 1;
+        
+        //Hallo
+        report.SourceLinesOfCode = m.ToString()
+            .Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.None)
+            .StringJoin(Environment.NewLine)
+            .RegexReplace(@"\/\*[\W\w]*?\*\/", "")
+            .Split(new[] {Environment.NewLine}, StringSplitOptions.RemoveEmptyEntries)
+            .Count(x => !string.IsNullOrWhiteSpace(x));
+        
 
         var freshResult = m.IsReturnFresh(model, solution);
         report.FilePath = path;

@@ -42,7 +42,7 @@ public static class FileChangeHelper
         return changes;
     }
     
-    public static List<PurityScore> GetChangedReports(this List<LinesChange> changes, List<PurityScore> scores)
+    public static List<PurityScore> FilterChangedScores(this List<LinesChange> changes, List<PurityScore> scores)
     {
         changes = changes.Where(x => x.Path.EndsWith(".cs", StringComparison.CurrentCultureIgnoreCase)).ToList();
         

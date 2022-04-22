@@ -12,96 +12,111 @@ namespace PurityCodeQualityMetrics
     public class MetricRunner
     {
         private readonly string _solutionLocation;
+        private readonly IPurityReportRepo _purityReportRepo;
+        private readonly PurityAnalyser _purityAnalyser;
+        private readonly PurityCalculator _purityCalculator;
 
-        public MetricRunner(string solutionLocation)
+        public MetricRunner(string solutionLocation, IPurityReportRepo purityReportRepo, PurityAnalyser purityAnalyser, PurityCalculator purityCalculator)
         {
             _solutionLocation = solutionLocation;
+            _purityReportRepo = purityReportRepo;
+            _purityAnalyser = purityAnalyser;
+            _purityCalculator = purityCalculator;
             if (!MSBuildLocator.IsRegistered)
                 MSBuildLocator.RegisterDefaults();
         }
 
-        public async Task<SolutionVersionWithMetrics> GetSolutionVersionWithMetrics(List<PurityReport> a)
+        private async Task<Solution> GetSolution()
         {
-            var analyser = new PurityAnalyser(LoggerFactory.Create(x => x.AddConsole()).CreateLogger<MetricRunner>());
-            
             using var workspace = MSBuildWorkspace.Create();
             workspace.WorkspaceFailed += (o, e) => Console.WriteLine(e.Diagnostic.Message);
             var solution = await workspace.OpenSolutionAsync(_solutionLocation, new ConsoleProgressReporter());
+            return solution;
+        }
 
+        public async Task<SolutionVersionWithMetrics> GetSolutionVersionWithMetrics(List<string> changedFiles)
+        {
+            var solution = await GetSolution();
             var projects = solution.Projects.Where(x => x.FilePath.EndsWith(".csproj") && !x.Name.Contains("Tests"));
 
-//                Project project = projects.First();
-            SolutionVersionWithMetrics solutionVersionWithMetrics = new SolutionVersionWithMetrics();
+            var solutionVersionWithMetrics = new SolutionVersionWithMetrics();
 
-            var reports = await analyser.GeneratePurityReports(_solutionLocation);
+            Parallel.ForEach(projects, (project, token) =>
+            {
+                var reports = _purityAnalyser.AnalyseProject(project, project.Solution, changedFiles);
+                _purityReportRepo.AddRange(reports);
+            });
             
-            new EfPurityRepo().AddRange(reports);
-            Console.WriteLine("Added reports");
-
-            var scores = new PurityCalculator(LoggerFactory
-                    .Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Critical)).CreateLogger(""))
-                .CalculateScores(reports, (x,y) => null);
-   
-
             foreach (Project project in projects)
             {
-                Compilation comp = await project.GetCompilationAsync();
-                List<SyntaxTree> syntaxTrees = comp.SyntaxTrees.ToList();
+                Compilation? comp = await project.GetCompilationAsync();
+                if (comp == null) continue;
 
-                Dictionary<INamedTypeSymbol, int> classExtensions = NumberOfChildren.GetClassExtensions(syntaxTrees, comp);
-                Dictionary<INamedTypeSymbol, int> classCouplings = CouplingBetweenObjects.CalculateCouplings(syntaxTrees, comp);
+ 
+
+                var syntaxTrees = comp.SyntaxTrees
+                    .Where(x => !changedFiles.Any() || changedFiles.Any(y =>
+                        x.FilePath.Contains(y, StringComparison.CurrentCultureIgnoreCase)))
+                    .ToList();
+
+                var classExtensions = NumberOfChildren.GetClassExtensions(syntaxTrees, comp);
+                var classCouplings = CouplingBetweenObjects.CalculateCouplings(syntaxTrees, comp);
 
                 foreach (var syntaxTree in syntaxTrees)
                 {
                     string location = syntaxTree.FilePath;
-                    if(location.ToLower().Contains("test")) continue;
+                    if (location.ToLower().Contains("test")) continue;
                     SemanticModel semanticModel = comp.GetSemanticModel(syntaxTree);
                     List<ClassDeclarationSyntax> classes = GetClassesFromRoot(syntaxTree.GetRoot());
                     string relativePath = location.Replace(@"\", "/");
                     var pathArr = relativePath.Split('/');
-                    string fileAndParent = $@"{pathArr[pathArr.Length-2]}/{pathArr[pathArr.Length-1]}";
+                    string fileAndParent = $@"{pathArr[pathArr.Length - 2]}/{pathArr[pathArr.Length - 1]}";
 
                     foreach (ClassDeclarationSyntax classDecl in classes)
                     {
+                        var classSymbol = semanticModel.GetDeclaredSymbol(classDecl);
+                        
                         string className = classDecl.Identifier.ValueText;
                         string classNameWithHash = $"{className}-{fileAndParent.GetHashCode().ToString()}";
 
                         if (solutionVersionWithMetrics.ClassProcessed(classNameWithHash)) continue;
 
-                        ClassWithMetrics classMetricResults = GetMetricResults(classDecl, semanticModel, className, location, classExtensions, classCouplings, scores);
+                        ClassWithMetrics classMetricResults = GetMetricResults(classDecl, semanticModel, className,
+                            location, classExtensions, classCouplings);
 
-                        if(className == "LocalizableStrings")
+                        if (className == "LocalizableStrings")
                             Console.WriteLine();
 
                         solutionVersionWithMetrics.AddClassWithMetrics(
-                            classNameWithHash
+                            classSymbol.ContainingNamespace + "." + classSymbol.Name
                             , classMetricResults);
                     }
                 }
-
             }
+
+            solutionVersionWithMetrics.Scores = _purityCalculator.CalculateScores(_purityReportRepo.GetAllReports(),
+                (unknownDepedency, ctx) => null);
             return solutionVersionWithMetrics;
         }
 
 
-        private static ClassWithMetrics GetMetricResults(ClassDeclarationSyntax classDecl, SemanticModel semanticModel, string className, string location, Dictionary<INamedTypeSymbol, int> classExtensions, Dictionary<INamedTypeSymbol, int> classCouplings, List<PurityScore> scores)
+        private static ClassWithMetrics GetMetricResults(ClassDeclarationSyntax classDecl, SemanticModel semanticModel,
+            string className, string location, Dictionary<INamedTypeSymbol, int> classExtensions,
+            Dictionary<INamedTypeSymbol, int> classCouplings)
         {
             ClassWithMetrics classMetricResults = new ClassWithMetrics(className, location);
-            
-
 
             var lambdaMetrics = LambdaMetrics.GetValueList(classDecl, semanticModel);
             classMetricResults.AddMetric(Measure.LambdaCount, lambdaMetrics.LambdaCount);
             classMetricResults.AddMetric(Measure.LambdaFieldVariableUsageCount, lambdaMetrics.FieldVariableUsageCount);
             classMetricResults.AddMetric(Measure.LambdaLocalVariableUsageCount, lambdaMetrics.LocalVariableUsageCount);
             classMetricResults.AddMetric(Measure.LambdaSideEffectCount, lambdaMetrics.SideEffects);
-            
 
             int sourceLinesOfCode = SourceLinesOfCode.GetCount(classDecl);
             classMetricResults.AddMetric(Measure.SourceLinesOfCode, sourceLinesOfCode);
 
             int commentDensity = CommentDensity.GetCount(classDecl, sourceLinesOfCode);
-            
+
             classMetricResults.AddMetric(Measure.CommentDensity, commentDensity);
 
             int cyclomaticComplexity = CyclomaticComplexity.GetCount(classDecl);
@@ -128,15 +143,8 @@ namespace PurityCodeQualityMetrics
             int sourceLinesOfLambda = SourceLinesOfLambda.GetCount(classDecl);
             classMetricResults.AddMetric(Measure.SourceLinesOfLambda, sourceLinesOfLambda);
 
-            int lambdaScore = (int)((double)sourceLinesOfLambda / sourceLinesOfCode * 100);
+            int lambdaScore = (int) ((double) sourceLinesOfLambda / sourceLinesOfCode * 100);
             classMetricResults.AddMetric(Measure.LambdaScore, lambdaScore);
-
-            var s =             scores.Where(x => x.Report.FullName.Contains(className))
-                .ToList();
-            
-            double purity = s.Any() ? s.Average(x => x.Metric1()) : 0;
-            classMetricResults.AddMetric(Measure.Purity, purity);
-
 
             int unterminatedCollections = UnterminatedCollections.GetCount(classDecl, semanticModel);
             classMetricResults.AddMetric(Measure.UnterminatedCollections, unterminatedCollections);
@@ -163,13 +171,15 @@ namespace PurityCodeQualityMetrics
                     projectDisplay += $" ({loadProgress.TargetFramework})";
                 }
 
-                Console.WriteLine($"{loadProgress.Operation,-15} {loadProgress.ElapsedTime,-15:m\\:ss\\.fffffff} {projectDisplay}");
+                Console.WriteLine(
+                    $"{loadProgress.Operation,-15} {loadProgress.ElapsedTime,-15:m\\:ss\\.fffffff} {projectDisplay}");
             }
         }
     }
 
     public class SolutionVersionWithMetrics
     {
+        public List<PurityScore> Scores { get; set; }
         public readonly Dictionary<string, ClassWithMetrics> ClassesWithMetrics;
 
         public SolutionVersionWithMetrics()
@@ -179,7 +189,8 @@ namespace PurityCodeQualityMetrics
 
         public void AddClassWithMetrics(string classNameWithHash, ClassWithMetrics classWithMetrics)
         {
-            ClassesWithMetrics.Add(classNameWithHash, classWithMetrics);
+            
+            ClassesWithMetrics[classNameWithHash] = classWithMetrics;
         }
 
         public bool ClassProcessed(string classNameWithHash)
@@ -187,7 +198,6 @@ namespace PurityCodeQualityMetrics
             return ClassesWithMetrics.ContainsKey(classNameWithHash);
         }
     }
-
 
 
     public class ClassWithMetrics

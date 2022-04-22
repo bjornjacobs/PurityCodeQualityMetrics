@@ -4,6 +4,8 @@ public class InMemoryReportRepo : IPurityReportRepo
 {
     private List<PurityReport> _reports = new List<PurityReport>();
 
+    private object _key = new object();
+
     public PurityReport? GetByName(string name)
     {
         throw new NotImplementedException();
@@ -21,8 +23,11 @@ public class InMemoryReportRepo : IPurityReportRepo
 
     public void AddRange(IEnumerable<PurityReport> reports)
     {
-        _reports.RemoveAll(x => reports.Any(y => x.FullName == y.FullName));
-        _reports.AddRange(reports);
+        lock (_key)
+        {
+            _reports.RemoveAll(x => reports.Any(y => x.FullName == y.FullName));
+            _reports.AddRange(reports);
+        }   
     }
 
     public void RemoveClassesInFiles(List<string> path)

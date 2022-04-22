@@ -21,7 +21,7 @@ public class IdentifierViolationPolicy : IViolationPolicy
                 var symbol = x.Symbol!;
                 var type = model.GetTypeInfo(x.Node).Type;
 
-
+        
                 if (symbol.IsEnumConstant() || symbol is IFieldSymbol {IsConst: true}) return PurityViolation.UnknownMethod;
 
                 if (symbol.IsStatic)

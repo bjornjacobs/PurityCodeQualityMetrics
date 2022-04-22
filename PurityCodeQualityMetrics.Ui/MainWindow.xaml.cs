@@ -30,7 +30,7 @@ namespace PurityCodeQualityMetrics.Ui
         private readonly ILoggerFactory _loggerFactory =
             LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug));
 
-        private readonly IPurityReportRepo _repo = new EfPurityRepo();
+        private readonly IPurityReportRepo _repo = new InMemoryReportRepo();
 
         private int UnknownIndex = 0;
 

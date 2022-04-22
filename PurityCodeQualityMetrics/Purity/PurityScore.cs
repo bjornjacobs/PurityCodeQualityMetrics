@@ -1,12 +1,26 @@
 ﻿namespace PurityCodeQualityMetrics.Purity;
 
+public class ViolationWithDistance
+{
+    public int Distance { get; set; }
+    public PurityViolation Violation { get; set; }
+
+
+    public ViolationWithDistance(int distance, PurityViolation violation)
+    {
+        Distance = distance;
+        Violation = violation;
+    }
+}
+
 public class PurityScore
 {
-    public PurityScore(PurityReport report, List<(int Distance,PurityViolation Violation)> violations)
+    public PurityScore(PurityReport report, List<ViolationWithDistance> violations, int linesOfSourceCode)
     {
         Report = report;
         Violations = violations;
-         CalculateLevel();
+        LinesOfSourceCode = linesOfSourceCode;
+        CalculateLevel();
     }
 
     public PurityReport Report { get; set; }
@@ -15,7 +29,9 @@ public class PurityScore
     public bool ReturnIsFresh { get; set; }
     
     public int DependencyCount { get; set; }
-    public List<(int Distance,PurityViolation Violation)> Violations { get; set; }
+    public List<ViolationWithDistance> Violations { get; set; }
+
+    public int LinesOfSourceCode { get; set; }
     
     public void CalculateLevel()
     {

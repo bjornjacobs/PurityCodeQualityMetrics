@@ -49,6 +49,7 @@ namespace PurityCodeQualityMetrics.GitCrawler.Issue
                     .Select(x => x.Hash).ToList()
                 ;
 
+
             var all = commits
                 // Look for patterns that close an issue (see: https://help.github.com/en/articles/closing-issues-using-keywords)
                 .Where(x => Regex.IsMatch(x.CommitInfo.Message, @"(clos(e[sd]?|ing)|fix(e[sd]|ing)?|resolv(e[sd]?))",

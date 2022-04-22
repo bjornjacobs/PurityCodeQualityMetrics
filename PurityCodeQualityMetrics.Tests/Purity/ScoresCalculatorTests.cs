@@ -40,7 +40,7 @@ public class ScoresCalculatorTests
 
 
         var scoreF4 = scores.First(x => x.Report.Name.EndsWith(nameof(_testClass.Func4)));
-        Assert.Contains((3, PurityViolation.ReadsLocalState), scoreF4.Violations);
-        Assert.Contains((0, PurityViolation.ModifiesLocalState), scoreF4.Violations);
+        Assert.Contains(new ViolationWithDistance(3, PurityViolation.ReadsLocalState), scoreF4.Violations);
+        Assert.Contains(new ViolationWithDistance(0, PurityViolation.ModifiesLocalState), scoreF4.Violations);
     }
 }

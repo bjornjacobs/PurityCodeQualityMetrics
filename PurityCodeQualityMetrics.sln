@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics.Gi
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugin", "Plugin", "{D69B195C-A2F1-4F89-9ADE-B297ED554C10}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PurityCodeQualityMetrics.DataProcessing", "PurityCodeQualityMetrics.DataProcessing\PurityCodeQualityMetrics.DataProcessing.csproj", "{5D5AEDC1-73CE-44B9-ACC1-94CD0F153070}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -65,6 +67,10 @@ Global
 		{3889BE4E-FF57-4032-9E9D-182F65BFEBBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3889BE4E-FF57-4032-9E9D-182F65BFEBBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3889BE4E-FF57-4032-9E9D-182F65BFEBBB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D5AEDC1-73CE-44B9-ACC1-94CD0F153070}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D5AEDC1-73CE-44B9-ACC1-94CD0F153070}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D5AEDC1-73CE-44B9-ACC1-94CD0F153070}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D5AEDC1-73CE-44B9-ACC1-94CD0F153070}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,8 +1,12 @@
-﻿using LibGit2Sharp;
+﻿using System.Text.Json;
+using System.Text.RegularExpressions;
+using LibGit2Sharp;
 using Microsoft.Extensions.Logging;
+using PurityCodeQualityMetrics.GitCrawler.Issue;
 using PurityCodeQualityMetrics.Purity;
 using PurityCodeQualityMetrics.Purity.Storage;
 using Commit = LibGit2Sharp.Commit;
+using Repository = LibGit2Sharp.Repository;
 
 namespace PurityCodeQualityMetrics.GitCrawler;
 
@@ -11,9 +15,15 @@ public class LandkroonInterface
     private ILogger _logger;
     private PurityAnalyser _purityAnalyser;
     private PurityCalculator _purityCalculator;
-    private Commit? lastState;
+    private Commit? currentCommitState;
     private IPurityReportRepo _purityReportRepo;
+    private IssueService _issueService = new IssueService();
+
+    private IPurityReportRepo _nonVolitilePurityRepo = new EfPurityRepo("standard_lib");
     
+    public static string OutputDir  =>
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "dev", "repos", "results");
+
     public LandkroonInterface(ILogger logger, PurityAnalyser purityAnalyser, PurityCalculator purityCalculator)
     {
         _logger = logger;
@@ -22,116 +32,153 @@ public class LandkroonInterface
         _purityReportRepo = new InMemoryReportRepo();
     }
 
-    public async Task Run(string repoPath, List<string> solutionFile, string mainBranch)
+    public async Task Run(TargetProject project)
     {
-        //Get commits/ with issues
-        var repo = new Repository(repoPath);
-        repo.Reset(ResetMode.Hard, mainBranch);
+        var repo = new Repository(project.RepoPath);
+        Commands.Checkout(repo, project.MainBranch);
+        var commitsWithIssues = GetCommitsWIthIssues(repo, project);
         
-        var bugCommits = repo.Commits
-         //   .Where(x => x.Message.Contains("bug", StringComparison.CurrentCultureIgnoreCase))
-            .ToList();
-        
-        
-
-
-        foreach (var b in bugCommits)
+        foreach (var commit in commitsWithIssues)
         {
-            Console.WriteLine($"{b.MessageShort}");
-            var parents = b.Parents.ToList();
-
-            _logger.LogInformation($"Checking out commit {b.MessageShort} this has {parents.Count} parents");
-      
-            if (parents.Count == 1)
+            foreach (var parentCommit in commit.Parents)
             {
-                var p = parents.First();
-                var stateDff = lastState == null ? new List<string>() : repo.Diff
-                    .Compare<Patch>(lastState.Tree, p.Tree).Select(x => x.Path)
-                    .Select(x => x.Replace('/', '\\')).ToList();
-                
-                var diffs = repo.Diff.Compare<Patch>(b.Tree, p.Tree).ToList();
-                var changes =  diffs.SelectMany(x => x.GetFileChangesFromPatch()).ToList();
-                _purityReportRepo.RemoveClassesInFiles(changes.Select(x => x.Path).ToList());
-                _logger.LogInformation($"Checking out parent {p.MessageShort} - {diffs.Count}");
-                
-                Commands.Checkout(repo, b);
-                lastState = b;
+                var codeChanges = repo.Diff.Compare<Patch>(commit.Tree, parentCommit.Tree) // Get all changes compared to the parent
+                    .SelectMany(x => x.GetFileChangesFromPatch()).ToList();
+                if (codeChanges.All(x => Path.GetExtension(x.Path) != ".cs"))
+                {
+                    _logger.LogInformation("Commit didn't change any csharp files");
+                    continue;
+                }
 
-                Console.WriteLine("\tAfter");
-                await CheckMethods(solutionFile.Select(x => Path.Combine(repoPath, x)).ToList(), changes.Select(x => x.Added).ToList(), stateDff);
-                
-                
-                Commands.Checkout(repo, p);
-                lastState = p;
-          
-                Console.WriteLine("\tBefore");
-                await CheckMethods(solutionFile.Select(x => Path.Combine(repoPath, x)).ToList(), changes.Select(x => x.Removed).ToList(), stateDff);
+                var before = await MetricsForCommit(project, repo, parentCommit, codeChanges.Select(x => x.Removed));
+                var after = await MetricsForCommit(project, repo, commit, codeChanges.Select(x => x.Added));
 
-                
-                
-                Console.WriteLine();
-            }
-            else
-            {
-                _logger.LogInformation($"More then one parent skipping");
+                var r = GetScorePerFunction(before, after);
+                r.ForEach(x => x.CommitHash = parentCommit.Sha);
+                AppendResults(Path.Combine(OutputDir, project.RepositoryName + ".json"), r);
             }
         }
     }
 
-    public async Task CheckMethods(List<string> solutionPaths, List<LinesChange> changesList, List<string> filesToCheck)
+    private static void AppendResults(string path, List<FunctionOutput> newResults)
     {
-        try
+        Directory.CreateDirectory(OutputDir);
+        
+        var existing = File.Exists(path) ? JsonSerializer.Deserialize<List<FunctionOutput>>(File.ReadAllText(path)) : new List<FunctionOutput>();
+        existing.AddRange(newResults);
+        File.WriteAllText(path, JsonSerializer.Serialize(existing));
+    }
+
+    private List<FunctionOutput> GetScorePerFunction(SolutionVersionWithMetrics before, SolutionVersionWithMetrics after)
+    {
+        var allFunctions = before.Scores.Concat(after.Scores)
+            .Select(x => new {x.Report.FullName, Class = x.Report.Namespace + "." + x.Report.Name.Split(".").First()}).ToList();
+                
+        var data = allFunctions.Select(func =>
         {
-            var solutionPath = solutionPaths.FirstOrDefault(File.Exists);
+            var rating = new FunctionOutput(func.FullName);
+            var b = before.Scores.FirstOrDefault(x => x.Report.FullName == func.FullName);
+            if (b != null)
+            {
+                rating.Before.Violations = b.Violations;
+                rating.Before.TotalLinesOfSourceCOde = b.LinesOfSourceCode;
+                rating.Before.DependencyCount = b.DependencyCount;
+                
+                if(before.ClassesWithMetrics.TryGetValue(func.Class, out var m))
+                    rating.Before.SetMetrics(m.MetricResult);        
+            }
             
-            if (!changesList.Any(x => x.Path.EndsWith(".cs", StringComparison.CurrentCultureIgnoreCase)))
+            var a = after.Scores.FirstOrDefault(x => x.Report.FullName == func.FullName);
+            if (a != null)
             {
-                _logger.LogInformation("No c# file changed");
-                return;
+                rating.After.Violations = a.Violations;
+                rating.After.TotalLinesOfSourceCOde = a.LinesOfSourceCode;
+                rating.After.DependencyCount = a.DependencyCount;
+                if(after.ClassesWithMetrics.TryGetValue(func.Class, out var m))
+                    rating.After.SetMetrics(m.MetricResult);
             }
+            return rating;
+        }).ToList();
 
-            var reports = await _purityAnalyser.GeneratePurityReports(solutionPath, filesToCheck, false);
-            _purityReportRepo.AddRange(reports);
-            var scores = _purityCalculator.CalculateScores(_purityReportRepo.GetAllReports(),(dep, context) =>
-            {
-                //Check if context actually needed.eg is in change list
-                if (!context.ReportInChanges(changesList))
-                    return null;
-                
-                
-                var userGenerated = MissingMethodInput.FromConsole(dep);
-                if (userGenerated == null) return null;
-                _purityReportRepo.AddRange(new []{userGenerated});
-                return userGenerated;   
-            });
-
-            var changedScores = changesList.GetChangedReports(scores);
-            changedScores.ForEach(x => Console.WriteLine($"\t\t{x.Report.Name} - {x.Violations.Count} - {x.Puritylevel}"));
-          //  WriteData(changedScores);
-        }
-        catch (Exception e)
-        {
-            _logger.LogWarning("Error while analysing commit", e);
-        }
+        return data;
     }
 
-    public void WriteData(List<PurityScore> changed)
+    private async Task<SolutionVersionWithMetrics> MetricsForCommit(TargetProject project, Repository repository, Commit commit, IEnumerable<LinesChange> codeChanges)
     {
-        foreach (var purityScore in changed)
+        var stateChange = CheckoutCommit(repository, commit); // Get all changes since last state on disk
+        var solutionFile = project.SolutionFile.Select(x => Path.Combine(project.RepoPath, x))
+            .First(File.Exists); //FInd the right solution file.
+                
+        var metrics = await AnalyseCode(solutionFile, stateChange);
+        metrics.Scores = codeChanges.ToList().FilterChangedScores(metrics.Scores); //Only get scores that are changed
+        
+        return metrics;
+    }
+
+    private async Task<SolutionVersionWithMetrics> AnalyseCode(string solution, List<string> changedFiles)
+    {
+        var runner = new MetricRunner(solution, _purityReportRepo, _purityAnalyser, _purityCalculator);
+        var metrics = await runner.GetSolutionVersionWithMetrics(changedFiles);
+        return metrics;
+    }
+
+    private List<string> CheckoutCommit(Repository repository, Commit commit)
+    {
+        var changes = currentCommitState == null
+            ? new List<string>()
+            : repository.Diff
+                .Compare<Patch>(currentCommitState.Tree, commit.Tree).Select(x => x.Path)
+                .Select(x => x.Replace('/', '\\')).ToList();
+
+        Commands.Checkout(repository, commit);
+        currentCommitState = commit;
+        return changes;
+    }
+
+    private List<Commit> GetCommitsWIthIssues(Repository repo, TargetProject project)
+    {
+        var issues = _issueService.GetIssues(project).Select(x => x.Number).ToList();
+
+        var bugCommits = repo.Commits
+            .Where(x => Regex.IsMatch(x.Message,
+                @"(clos(e[sd]?|ing)|fix(e[sd]|ing)?|resolv(e[sd]?))", RegexOptions.IgnoreCase))
+            // Check if there is a linked issue or pull-request in the meta data
+            .Where(x => Regex.IsMatch(x.Message, @"#\d+"))
+            // Check if there is a linked bug issue to the number found in the commit message
+            .Where(x => ContainsBugIssue(x.Message, issues))
+            .ToList();
+
+        bool ContainsBugIssue(string message, List<long> bugIssues)
         {
-            var s = new[]
+            var matches = Regex.Matches(message, @"#\d+");
+            foreach (Match match in matches)
             {
-                purityScore.DependencyCount,
-                purityScore.Violations.Count(x => x.Violation == PurityViolation.ThrowsException),
-                purityScore.Violations.Count(x => x.Violation == PurityViolation.ModifiesParameter),
-                purityScore.Violations.Count(x => x.Violation == PurityViolation.UnknownMethod),
-                purityScore.Violations.Count(x => x.Violation == PurityViolation.ModifiesLocalState),
-                purityScore.Violations.Count(x => x.Violation == PurityViolation.ReadsLocalState),
-                purityScore.Violations.Count(x => x.Violation == PurityViolation.ModifiesGlobalState),
-                purityScore.Violations.Count(x => x.Violation == PurityViolation.ReadsGlobalState),
-            };
-            var row = string.Join(", ", s) + Environment.NewLine;
-            File.AppendAllText(Environment.GetFolderPath(Environment.SpecialFolder.Desktop) + "\\" + "test.csv", row);
+                long number = long.Parse(match.Value.Substring(1));
+                if (bugIssues.Contains(number)) return true;
+            }
+
+            return false;
         }
+
+        return bugCommits;
+    }
+
+
+    private PurityReport? TryFindPurityReport(List<LinesChange> changes, MethodDependency dep, PurityReport context)
+    {
+        //Check if context actually needed.eg is in change list
+        if (!context.ReportInChanges(changes))
+            return null;
+
+        var existing = _nonVolitilePurityRepo.GetByFullName(dep.FullName);
+        if (existing != null)
+            return existing;
+
+
+        var userGenerated = MissingMethodInput.FromConsole(dep);
+        if (userGenerated == null) return null;
+        _purityReportRepo.AddRange(new[] {userGenerated});
+        _nonVolitilePurityRepo.AddRange(new[] {userGenerated});
+        return userGenerated;
     }
 }

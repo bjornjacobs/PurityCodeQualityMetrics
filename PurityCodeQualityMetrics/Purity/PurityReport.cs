@@ -47,6 +47,8 @@ public class PurityReport
     public int LineStart { get; set; }
     public int LineEnd { get; set; }
     
+    public int SourceLinesOfCode { get; set; }
+    
     [NotMapped] public List<string> ParameterTypes { get; set; } = null!;
     
     [NotMapped] public List<PurityViolation> Violations { get; set; }
