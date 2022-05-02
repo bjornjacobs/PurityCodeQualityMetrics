@@ -71,8 +71,6 @@ public class PurityAnalyser
 
     public List<PurityReport> AnalyseProject(Project project, Solution solution, List<string> files)
     {
-
-            
         var compilation = project.GetCompilationAsync().Result;
 
         if (compilation == null) throw new Exception("Could not compile project");
@@ -91,43 +89,74 @@ public class PurityAnalyser
         //Each syntax tree represents a file. Filter on files if there are any
         
         return compilation.SyntaxTrees.Where(x => !files.Any() || files.Any(y => x.FilePath.Contains(y, StringComparison.CurrentCultureIgnoreCase))).SelectMany(tree =>
-            tree.GetAllMethods().Select(m => ExtractReportFromDeclaration(m, compilation.GetSemanticModel(tree), solution, tree.FilePath))
+            tree.GetAllMethods().Select(m => ExtractReportFromDeclaration(m, compilation.GetSemanticModel(tree), solution))
         ).ToList();
     }
 
-
-    public PurityReport ExtractReportFromDeclaration(SyntaxNode m, SemanticModel model, Solution solution, string path)
+    public List<PurityReport> ExtractReportsFromMethodAndDependencies(SyntaxNode method, SemanticModel model,
+        Solution solution, Func<SyntaxTree, SemanticModel> getModel)
     {
-        var workingSymbol = m.GetMethodSymbol(model);
+        var cache = new Dictionary<SyntaxNode, PurityReport>();
+        
+        Calc(method);
+
+        void Calc(SyntaxNode node)
+        {
+            if (cache.ContainsKey(node)) return; 
+            
+            var result = ExtractReportFromDeclaration(method, model, solution);
+            cache[node] = result;
+            
+            //Recursive for dependencies
+            var deps = node.DescendantNodesInThisFunction()
+                .OfType<InvocationExpressionSyntax>()
+                .Select(x =>
+                {
+                    try
+                    {
+                        var model = getModel(x.SyntaxTree);
+                        var s = model.GetSymbolInfo(x);
+                        if (s.Symbol == null) return null;
+
+                        return s.Symbol.OriginalDefinition.DeclaringSyntaxReferences
+                            .First().GetSyntax();
+                    }
+                    catch (Exception e)
+                    {
+                        return null;
+                    }
+      
+                })
+                .Where(x => x != null)
+                .ToList();
+            deps.ForEach(Calc);
+        }
+
+        return cache.Select(x => x.Value).ToList();
+    }
+
+    public PurityReport ExtractReportFromDeclaration(SyntaxNode method, SemanticModel model, Solution solution)
+    {
+        var workingSymbol = method.GetMethodSymbol(model);
 
         var report = new PurityReport(
-            workingSymbol.GetUniqueMethodName(m),
+            workingSymbol.GetUniqueMethodName(method),
             workingSymbol.ContainingNamespace.ToUniqueString(),
             workingSymbol.ReturnType.ToUniqueString(),
             workingSymbol.Parameters.Select(x => x.Type.ToUniqueString())
                 .ToList());
 
-        report.FilePath = path;
-        report.LineStart = m.GetLocation().GetLineSpan().Span.Start.Line + 1;
-        report.LineEnd = m.GetLocation().GetLineSpan().Span.End.Line + 1;
-        
-        //Hallo
-        report.SourceLinesOfCode = m.ToString()
-            .Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.None)
-            .StringJoin(Environment.NewLine)
-            .RegexReplace(@"\/\*[\W\w]*?\*\/", "")
-            .Split(new[] {Environment.NewLine}, StringSplitOptions.RemoveEmptyEntries)
-            .Count(x => !string.IsNullOrWhiteSpace(x));
-        
+        report.FilePath = method.SyntaxTree.FilePath;
+        report.LineStart = method.GetLocation().GetLineSpan().Span.Start.Line + 1;
+        report.LineEnd = method.GetLocation().GetLineSpan().Span.End.Line + 1;
 
-        var freshResult = m.IsReturnFresh(model, solution);
-        report.FilePath = path;
+        report.SourceLinesOfCode = SourceLinesOfCode.GetCount(method);
+        
+        var freshResult = method.IsReturnFresh(model, solution);
         report.ReturnValueIsFresh = freshResult.IsFresh;
         report.MethodType = workingSymbol.MethodKind.ToMethodType();
-        report.Violations.AddRange(ExtractPurityViolations(m, model));
-        report.Dependencies.AddRange(ExtractMethodDependencies(m, model, solution));
-        
-        
+        report.Violations.AddRange(ExtractPurityViolations(method, model));
+        report.Dependencies.AddRange(ExtractMethodDependencies(method, model, solution));
         report.Dependencies.Where(x => freshResult.Dependencies.Any(y => x.FullName == y.FullName)).ToList()
             .ForEach(x => x.FreshDependsOnMethodReturnIsFresh = true);
         return report;
@@ -147,6 +176,8 @@ public class PurityAnalyser
 
         return lambdas.Concat(invocations).Select( c =>
         {
+            if (c.IsLogging()) return null;
+            
             var symbol = model.GetSymbolInfo(c).Symbol as IMethodSymbol;
             
             if (symbol == null)
@@ -158,14 +189,12 @@ public class PurityAnalyser
  
                 return new MethodDependency(c.ToString());
             }
-
-
+            
             //if (symbol.IsAbstract)
           //  {
                // var implementations = SymbolFinder.FindImplementationsAsync(symbol, solution).Result.ToList();
           //  }
-            
-
+          
             return new MethodDependency(symbol.GetUniqueMethodName(c),
                 symbol.ContainingNamespace.ToUniqueString(),
                 symbol.ReturnType.ToUniqueString(),
@@ -173,6 +202,6 @@ public class PurityAnalyser
                 symbol.MethodKind.ToMethodType(),
                 symbol.IsAbstract,
                 false);
-        }).ToList();
+        }).Where(x => x != null).ToList();
     }
 }

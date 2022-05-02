@@ -11,6 +11,7 @@ public class IdentifierViolationPolicy : IViolationPolicy
         var ms = model.GetSymbolInfo(method).Symbol ?? model.GetDeclaredSymbol(method);
         
         var violations = method.DescendantNodesInThisFunction()
+            .Where(x => !x.IsLogging()) //Ignore logging
             .OfType<IdentifierNameSyntax>()
             .Select(x => new {Node = x, model.GetSymbolInfo(x).Symbol})
             .Where(x => x.Symbol != null)

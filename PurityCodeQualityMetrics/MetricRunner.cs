@@ -34,12 +34,12 @@ namespace PurityCodeQualityMetrics
             return solution;
         }
 
-        public async Task<SolutionVersionWithMetrics> GetSolutionVersionWithMetrics(List<string> changedFiles)
+        public async Task<SolutionWithMetrics> GetSolutionVersionWithMetrics(List<string> changedFiles)
         {
             var solution = await GetSolution();
             var projects = solution.Projects.Where(x => x.FilePath.EndsWith(".csproj") && !x.Name.Contains("Tests"));
 
-            var solutionVersionWithMetrics = new SolutionVersionWithMetrics();
+            var solutionVersionWithMetrics = new SolutionWithMetrics();
 
             Parallel.ForEach(projects, (project, token) =>
             {
@@ -177,12 +177,12 @@ namespace PurityCodeQualityMetrics
         }
     }
 
-    public class SolutionVersionWithMetrics
+    public class SolutionWithMetrics
     {
         public List<PurityScore> Scores { get; set; }
         public readonly Dictionary<string, ClassWithMetrics> ClassesWithMetrics;
 
-        public SolutionVersionWithMetrics()
+        public SolutionWithMetrics()
         {
             ClassesWithMetrics = new Dictionary<string, ClassWithMetrics>();
         }

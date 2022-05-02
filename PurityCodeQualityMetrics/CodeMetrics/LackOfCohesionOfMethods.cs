@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using PurityCodeQualityMetrics.Purity.Util;
 
 namespace PurityCodeQualityMetrics.CodeMetrics
 {
@@ -9,7 +10,6 @@ namespace PurityCodeQualityMetrics.CodeMetrics
         {
             var methods = classNode.DescendantNodes()
                 .OfType<MethodDeclarationSyntax>();
-//                .Where(x => x is MethodDeclarationSyntax);
 
             Dictionary<string, HashSet<string>> methodFieldVariables = new Dictionary<string, HashSet<string>>();
 
@@ -18,7 +18,7 @@ namespace PurityCodeQualityMetrics.CodeMetrics
                 string methodName = method.Identifier.ValueText;
 
                 IEnumerable<SyntaxNode> variablesUsed = method
-                    .DescendantNodes()
+                    .DescendantNodesInThisFunction()
                     .Where(x => x is IdentifierNameSyntax);
                 HashSet<string> fieldVariables = new HashSet<string>();
                 foreach (SyntaxNode syntaxNode in variablesUsed)

@@ -11,10 +11,8 @@ var data = JsonSerializer.Deserialize<List<FunctionOutput>>(json);
 var output = data.Select(x => new
 {
     Name = x.FullName,
-    PurityBefore = x.Before?.Violations?.Count ?? -1,
-    PurityAfter = x.After?.Violations?.Count ?? -1,
-    CyclomaticComplexityBefore = x.Before?.CyclomaticComplexity ?? -1,
-    CyclomaticComplexityAfter = x.After?.CyclomaticComplexity ?? -1,
+    PurityBefore = x.Before?.PurityScore.Violations?.Count ?? -1,
+    PurityAfter = x.After?.PurityScore.Violations?.Count ?? -1,
 });
 
 ConsoleTable.From(output).Write();

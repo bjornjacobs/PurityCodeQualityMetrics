@@ -1,8 +1,12 @@
-﻿namespace PurityCodeQualityMetrics.Purity;
+﻿using System.Text.Json.Serialization;
+
+namespace PurityCodeQualityMetrics.Purity;
 
 public class ViolationWithDistance
 {
+    [JsonPropertyName("D")]
     public int Distance { get; set; }
+    [JsonPropertyName("V")]
     public PurityViolation Violation { get; set; }
 
 

@@ -14,7 +14,7 @@ namespace PurityCodeQualityMetrics.CodeMetrics
 
         public static Dictionary<INamedTypeSymbol, int> GetClassExtensions(List<SyntaxTree> syntaxTrees, Compilation comp)
         {
-            var bla = new Dictionary<INamedTypeSymbol, int>();
+            var result = new Dictionary<INamedTypeSymbol, int>();
 
             foreach (SyntaxTree syntaxTree in syntaxTrees)
             {
@@ -24,19 +24,19 @@ namespace PurityCodeQualityMetrics.CodeMetrics
                 {
                     var self = ((ITypeSymbol) model.GetDeclaredSymbol(classDeclaration));
                     INamedTypeSymbol parent = self.BaseType;
-                    if (bla.ContainsKey(parent))
+                    if (result.ContainsKey(parent))
                     {
-                        bla[parent]++;
+                        result[parent]++;
                     }
                     else
                     {
-                        bla.Add(parent, 1);    
+                        result.Add(parent, 1);    
                     }
 
                 }
             }
 
-            return bla;
+            return result;
         }
     }
 }

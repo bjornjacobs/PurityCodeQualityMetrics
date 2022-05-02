@@ -53,20 +53,20 @@ public static class SyntaxNodeUtil
         return method.DescendantNodes().OfType<LambdaExpressionSyntax>().ToList().FindIndex(node.IsEquivalentTo);
     }
     
-    public static List<CSharpSyntaxNode> GetAllMethods(this SyntaxTree tree, bool includeProperties = false)
+    public static List<SyntaxNode> GetAllMethods(this SyntaxTree tree, bool includeProperties = false)
     {
         var methods = tree.GetRoot()
             .DescendantNodes()
             .OfType<MethodDeclarationSyntax>()
-            .Cast<CSharpSyntaxNode>();
+            .Cast<SyntaxNode>();
 
         var local = tree.GetRoot().DescendantNodes()
             .OfType<LocalFunctionStatementSyntax>()
-            .Cast<CSharpSyntaxNode>();
+            .Cast<SyntaxNode>();
         
         var lambda = tree.GetRoot().DescendantNodes()
             .OfType<LambdaExpressionSyntax>()
-            .Cast<CSharpSyntaxNode>();
+            .Cast<SyntaxNode>();
 
         var val = local.Concat(methods).Concat(lambda);
         
@@ -78,6 +78,11 @@ public static class SyntaxNodeUtil
 
 
         return val.ToList();
+    }
+
+    public static bool IsLogging(this SyntaxNode node)
+    {
+        return node.ToString().Contains("log", StringComparison.CurrentCultureIgnoreCase);
     }
 
     /// <summary>

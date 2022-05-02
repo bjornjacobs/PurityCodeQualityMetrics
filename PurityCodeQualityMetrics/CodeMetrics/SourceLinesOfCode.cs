@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace PurityCodeQualityMetrics.CodeMetrics
 {
@@ -6,7 +7,7 @@ namespace PurityCodeQualityMetrics.CodeMetrics
     {
         private const string NewlineToken = "_NEWLINETOKEN_";
 
-        public static int GetCount(ClassDeclarationSyntax classDec)
+        public static int GetCount(SyntaxNode classDec)
         {
             return classDec
                     .ToString()

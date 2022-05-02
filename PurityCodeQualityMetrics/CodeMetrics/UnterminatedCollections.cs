@@ -1,14 +1,15 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using PurityCodeQualityMetrics.Purity.Util;
 
 namespace PurityCodeQualityMetrics.CodeMetrics
 {
     public static class UnterminatedCollections
     {
-        public static int GetCount(ClassDeclarationSyntax classDeclaration, SemanticModel semanticModel)
+        public static int GetCount(SyntaxNode node, SemanticModel semanticModel)
         {
-            return classDeclaration
-                .DescendantNodes()
+            return node
+                .DescendantNodesInThisFunction()
                 .OfType<VariableDeclarationSyntax>()
                 .Select(x => x.ChildNodes().First())
                 .Select(x => semanticModel.GetSymbolInfo(x))

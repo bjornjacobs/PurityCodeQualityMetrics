@@ -1,14 +1,15 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace PurityCodeQualityMetrics.CodeMetrics
 {
     public static class CommentDensity
     {
-        public static int GetCount(ClassDeclarationSyntax classDec, int sourceLinesOfCode)
+        public static int GetCount(SyntaxNode node, int sourceLinesOfCode)
         {
             int counter = 0;
 
-            var lines = classDec
+            var lines = node
                     .ToString()
                     .Split(new[] {"\r\n", "\r", "\n"}, StringSplitOptions.None)
                 ;

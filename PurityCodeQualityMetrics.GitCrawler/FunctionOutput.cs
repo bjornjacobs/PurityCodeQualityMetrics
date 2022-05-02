@@ -7,14 +7,14 @@ public class FunctionOutput
     public string CommitHash { get; set; }
     public string FullName { get; set; }
     
-    public FunctionRating Before { get; set; }
-    public FunctionRating After { get; set; }
+    public MethodWithMetrics Before { get; set; }
+    public MethodWithMetrics After { get; set; }
 
-    public FunctionOutput(string fullName)
+    public FunctionOutput(string fullName, MethodWithMetrics before, MethodWithMetrics after)
     {
         FullName = fullName;
-        Before = new FunctionRating();
-        After = new FunctionRating();
+        Before = before;
+        After = after;
     }
 }
 

@@ -7,7 +7,7 @@ namespace PurityCodeQualityMetrics.CodeMetrics
     public static class LambdaMetrics
     {
 
-        public static LambdaMetricsResults GetValueList(ClassDeclarationSyntax classDecl, SemanticModel model)
+        public static LambdaMetricsResults GetValueList(SyntaxNode classDecl, SemanticModel model)
         {
             LambdaWalker walker = new LambdaWalker(model, classDecl);
 
@@ -20,7 +20,7 @@ namespace PurityCodeQualityMetrics.CodeMetrics
             public LambdaMetricsResults LambdaMetricsResults;
             
 
-            public LambdaWalker(SemanticModel model, ClassDeclarationSyntax node) : base(SyntaxWalkerDepth.Token)
+            public LambdaWalker(SemanticModel model, SyntaxNode node) : base(SyntaxWalkerDepth.Token)
             {
                 _semanticModel = model;
                 LambdaMetricsResults = new LambdaMetricsResults();

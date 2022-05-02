@@ -35,13 +35,16 @@ public class LandkroonInterface
     public async Task Run(TargetProject project)
     {
         var repo = new Repository(project.RepoPath);
+        Console.WriteLine($"Starting crawling {project.RepositoryName}. Resetting to branch {project.MainBranch}");
         Commands.Checkout(repo, project.MainBranch);
         var commitsWithIssues = GetCommitsWIthIssues(repo, project);
         
         foreach (var commit in commitsWithIssues)
         {
+            Console.WriteLine($"Starting analysis for {commit.MessageShort} has {commit.Parents.Count()} parents");
             foreach (var parentCommit in commit.Parents)
             {
+                Console.WriteLine($"Checking out parent {commit.MessageShort}");
                 var codeChanges = repo.Diff.Compare<Patch>(commit.Tree, parentCommit.Tree) // Get all changes compared to the parent
                     .SelectMany(x => x.GetFileChangesFromPatch()).ToList();
                 if (codeChanges.All(x => Path.GetExtension(x.Path) != ".cs"))
@@ -49,8 +52,9 @@ public class LandkroonInterface
                     _logger.LogInformation("Commit didn't change any csharp files");
                     continue;
                 }
-
+                Console.WriteLine("Checking out before");
                 var before = await MetricsForCommit(project, repo, parentCommit, codeChanges.Select(x => x.Removed));
+                Console.WriteLine("Checking out after");
                 var after = await MetricsForCommit(project, repo, commit, codeChanges.Select(x => x.Added));
 
                 var r = GetScorePerFunction(before, after);
@@ -69,70 +73,46 @@ public class LandkroonInterface
         File.WriteAllText(path, JsonSerializer.Serialize(existing));
     }
 
-    private List<FunctionOutput> GetScorePerFunction(SolutionVersionWithMetrics before, SolutionVersionWithMetrics after)
+    private List<FunctionOutput> GetScorePerFunction(List<MethodWithMetrics> before, List<MethodWithMetrics> after)
     {
-        var allFunctions = before.Scores.Concat(after.Scores)
-            .Select(x => new {x.Report.FullName, Class = x.Report.Namespace + "." + x.Report.Name.Split(".").First()}).ToList();
+        var allFunctions = before.Concat(after)
+            .Select(x => new {x.PurityScore.Report.FullName, Class = x.PurityScore.Report.Namespace + "." + x.PurityScore.Report.Name.Split(".").First()}).ToList();
                 
         var data = allFunctions.Select(func =>
         {
-            var rating = new FunctionOutput(func.FullName);
-            var b = before.Scores.FirstOrDefault(x => x.Report.FullName == func.FullName);
-            if (b != null)
-            {
-                rating.Before.Violations = b.Violations;
-                rating.Before.TotalLinesOfSourceCOde = b.LinesOfSourceCode;
-                rating.Before.DependencyCount = b.DependencyCount;
-                
-                if(before.ClassesWithMetrics.TryGetValue(func.Class, out var m))
-                    rating.Before.SetMetrics(m.MetricResult);        
-            }
-            
-            var a = after.Scores.FirstOrDefault(x => x.Report.FullName == func.FullName);
-            if (a != null)
-            {
-                rating.After.Violations = a.Violations;
-                rating.After.TotalLinesOfSourceCOde = a.LinesOfSourceCode;
-                rating.After.DependencyCount = a.DependencyCount;
-                if(after.ClassesWithMetrics.TryGetValue(func.Class, out var m))
-                    rating.After.SetMetrics(m.MetricResult);
-            }
+            var b = before.FirstOrDefault(x => x.PurityScore.Report.FullName == func.FullName);
+            var a = after.FirstOrDefault(x => x.PurityScore.Report.FullName == func.FullName);
+            var rating = new FunctionOutput(func.FullName, b, a);
             return rating;
         }).ToList();
 
         return data;
     }
 
-    private async Task<SolutionVersionWithMetrics> MetricsForCommit(TargetProject project, Repository repository, Commit commit, IEnumerable<LinesChange> codeChanges)
+    private async Task<List<MethodWithMetrics>> MetricsForCommit(TargetProject project, Repository repository, Commit commit, IEnumerable<LinesChange> codeChanges)
     {
-        var stateChange = CheckoutCommit(repository, commit); // Get all changes since last state on disk
+        CheckoutCommit(repository, commit); // Get all changes since last state on disk
         var solutionFile = project.SolutionFile.Select(x => Path.Combine(project.RepoPath, x))
             .First(File.Exists); //FInd the right solution file.
                 
-        var metrics = await AnalyseCode(solutionFile, stateChange);
-        metrics.Scores = codeChanges.ToList().FilterChangedScores(metrics.Scores); //Only get scores that are changed
-        
+        var metrics = await AnalyseCode(solutionFile, codeChanges.ToList());
+
         return metrics;
     }
 
-    private async Task<SolutionVersionWithMetrics> AnalyseCode(string solution, List<string> changedFiles)
+    private async Task<List<MethodWithMetrics>> AnalyseCode(string solution, List<LinesChange> changes)
     {
-        var runner = new MetricRunner(solution, _purityReportRepo, _purityAnalyser, _purityCalculator);
-        var metrics = await runner.GetSolutionVersionWithMetrics(changedFiles);
+       
+        var runner = new OptimizedMetricRunner(_purityAnalyser, _purityCalculator);
+        var metrics = await runner.Run(solution, changes);
+        Console.WriteLine($"Found metrics for {metrics.Count} methods");
         return metrics;
     }
 
-    private List<string> CheckoutCommit(Repository repository, Commit commit)
+    private void CheckoutCommit(Repository repository, Commit commit)
     {
-        var changes = currentCommitState == null
-            ? new List<string>()
-            : repository.Diff
-                .Compare<Patch>(currentCommitState.Tree, commit.Tree).Select(x => x.Path)
-                .Select(x => x.Replace('/', '\\')).ToList();
-
         Commands.Checkout(repository, commit);
         currentCommitState = commit;
-        return changes;
     }
 
     private List<Commit> GetCommitsWIthIssues(Repository repo, TargetProject project)
