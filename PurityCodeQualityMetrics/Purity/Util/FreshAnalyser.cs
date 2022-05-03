@@ -14,16 +14,25 @@ public static class FreshAnalyser
             .Select(x => x.Expression!)
             .ToList();
 
-        var ass = node.DescendantNodesInThisFunction()
+        var dec = node.DescendantNodesInThisFunction()
             .OfType<VariableDeclaratorSyntax>()
             .Select(x => x.Initializer?.Value)
             .ToList();
+        
+        
+        var ass = node.DescendantNodesInThisFunction()
+            .OfType<AssignmentExpressionSyntax>()
+            .Select(x => x.Right)
+            .ToList();
+        
+        
 
         bool returnFresh = true;
         
         var process = new Stack<(SyntaxNode, int)>();
         returns.ForEach(x => process.Push((x, 0)));
         ass.ForEach(x => process.Push((x, 1)));
+        dec.ForEach(x => process.Push((x, 1)));
 
         var dependencies = new List<string>();
         var shouldBeFresh = new List<string>();

@@ -24,5 +24,4 @@ repo.AddRange(purityReports);
 
 var score = calculator.CalculateScores(purityReports, (dependency, report) => null);
 
-
 ConsoleTable.From(score.Select(x =>  new {Name = x.Report.Name, Violations = string.Join(",", x.Violations.Select(x => $"{x.Violation}({x.Distance})"))})).Write();
