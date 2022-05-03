@@ -1,4 +1,5 @@
 ﻿using CommandLine;
+using ConsoleTables;
 using Microsoft.Extensions.Logging;
 using PurityCodeQualityMetrics;
 using PurityCodeQualityMetrics.Purity;
@@ -16,8 +17,12 @@ var repo = new InMemoryReportRepo();
 repo.Clear();
 
 var analyzer = new PurityAnalyser(factory.CreateLogger<PurityAnalyser>());
+var calculator = new PurityCalculator(factory.CreateLogger<PurityCalculator>());
 
 var purityReports = await analyzer.GeneratePurityReportsProject(project);
 repo.AddRange(purityReports);
 
-ConsoleInterface.PrintOverview(repo);
+var score = calculator.CalculateScores(purityReports, (dependency, report) => null);
+
+
+ConsoleTable.From(score.Select(x =>  new {Name = x.Report.Name, Violations = string.Join(",", x.Violations.Select(x => $"{x.Violation}({x.Distance})"))})).Write();

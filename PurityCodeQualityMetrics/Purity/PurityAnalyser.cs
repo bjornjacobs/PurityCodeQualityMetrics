@@ -152,13 +152,19 @@ public class PurityAnalyser
 
         report.SourceLinesOfCode = SourceLinesOfCode.GetCount(method);
         
-        var freshResult = method.IsReturnFresh(model, solution);
-        report.ReturnValueIsFresh = freshResult.IsFresh;
+
         report.MethodType = workingSymbol.MethodKind.ToMethodType();
         report.Violations.AddRange(ExtractPurityViolations(method, model));
         report.Dependencies.AddRange(ExtractMethodDependencies(method, model, solution));
-        report.Dependencies.Where(x => freshResult.Dependencies.Any(y => x.FullName == y.FullName)).ToList()
+        
+        var freshResult = method.IsReturnFresh(model);
+        report.ReturnValueIsFresh = freshResult.IsFresh;
+        report.Dependencies.Where(x => freshResult.Dependencies.Any(y => x.FullName == y)).ToList()
             .ForEach(x => x.FreshDependsOnMethodReturnIsFresh = true);
+        
+        report.Dependencies.Where(x => freshResult.ShouldBeFresh.Any(y => x.FullName == y)).ToList()
+            .ForEach(x => x.ReturnShouldBeFresh = true);
+        
         return report;
     }
 
@@ -190,11 +196,6 @@ public class PurityAnalyser
                 return new MethodDependency(c.ToString());
             }
             
-            //if (symbol.IsAbstract)
-          //  {
-               // var implementations = SymbolFinder.FindImplementationsAsync(symbol, solution).Result.ToList();
-          //  }
-          
             return new MethodDependency(symbol.GetUniqueMethodName(c),
                 symbol.ContainingNamespace.ToUniqueString(),
                 symbol.ReturnType.ToUniqueString(),

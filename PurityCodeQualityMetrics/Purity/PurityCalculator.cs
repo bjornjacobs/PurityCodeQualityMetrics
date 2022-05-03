@@ -90,6 +90,11 @@ public class PurityCalculator
                             : x.Violations.Select(x => new ViolationWithDistance(x.Distance + 1, x.Violation)))
                     .ToList()
             );
+
+            var nonFresh = score.Report.Dependencies.Where(x => x.ReturnShouldBeFresh).Select(x => _table[x.FullName])
+                .Where(x => !x.ReturnIsFresh).Select(_ => PurityViolation.ModifiesNonFreshObject).ToList();
+            score.Violations.AddRange(nonFresh.Select(x => new ViolationWithDistance(1, x)));
+
             score.DependencyCount = depsOutside.Sum(x => x?.DependencyCount ?? 0) + componentDepCount;
             score.LinesOfSourceCode = depsOutside.Sum(x => x?.LinesOfSourceCode ?? 0) + componentsLines;
 
@@ -100,6 +105,8 @@ public class PurityCalculator
                                       .Select(x => _table.GetValueOrDefault(x.FullName))
                                       .All(x => x?.ReturnIsFresh ??
                                                 true); //If unknown make the assumption that it is fresh
+            
+            
 
             score.CalculateLevel();
             _table.Add(score.Report.FullName, score);

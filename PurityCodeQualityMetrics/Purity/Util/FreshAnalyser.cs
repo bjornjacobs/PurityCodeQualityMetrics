@@ -5,67 +5,79 @@ namespace PurityCodeQualityMetrics.Purity.Util;
 
 public static class FreshAnalyser
 {
-    public static (bool IsFresh, List<MethodDependency> Dependencies) IsReturnFresh(this SyntaxNode node, SemanticModel model, Solution solution)
+    public static (bool IsFresh, List<string> Dependencies, List<string> ShouldBeFresh) IsReturnFresh(this SyntaxNode node, SemanticModel model)
     {
         IMethodSymbol? method = node.GetMethodSymbol(model);
-        
-        if (method.ReturnsVoid || !method.ReturnType.IsReferenceType) return (true, new List<MethodDependency>());
-        
-        var returns = node.DescendantNodes().OfType<ReturnStatementSyntax>()
-            .Select(x => x.Expression)
+       // if (method.ReturnsVoid || !method.ReturnType.IsReferenceType) return (true, new List<string>());
+
+        var returns = node.DescendantNodesInThisFunction().OfType<ReturnStatementSyntax>()
+            .Select(x => x.Expression!)
             .ToList();
 
-        var process = new Stack<SyntaxNode>();
-        returns.ForEach(x => process.Push(x));
+        var ass = node.DescendantNodesInThisFunction()
+            .OfType<VariableDeclaratorSyntax>()
+            .Select(x => x.Initializer?.Value)
+            .ToList();
 
-        var dependencies = new List<MethodDependency>();
+        bool returnFresh = true;
+        
+        var process = new Stack<(SyntaxNode, int)>();
+        returns.ForEach(x => process.Push((x, 0)));
+        ass.ForEach(x => process.Push((x, 1)));
+
+        var dependencies = new List<string>();
+        var shouldBeFresh = new List<string>();
         while (process.Count > 0)
         {
             var currentNode = process.Pop();
-            if(currentNode == null) continue;
-            var currentSymbol = model.GetSymbolInfo(currentNode).Symbol;
-            if(currentSymbol == null)
+            if (currentNode.Item1 == null) continue;
+            var currentSymbol = model.GetSymbolInfo(currentNode.Item1).Symbol;
+            if (currentSymbol == null)
                 continue;
-            
-            
+
+
             if (currentSymbol.Kind == SymbolKind.Method)
             {
                 var methodRef = (IMethodSymbol) currentSymbol;
-                if (methodRef.MethodKind != MethodKind.Constructor && methodRef.MethodKind != MethodKind.BuiltinOperator)
-                    dependencies.Add(new MethodDependency(methodRef.GetUniqueMethodName(currentNode),
-                        methodRef.ContainingNamespace.ToUniqueString(),
-                        methodRef.ReturnType.ToUniqueString(),
-                        methodRef.Parameters.Select(x => x.Type.ToUniqueString()).ToList(),
-                        methodRef.MethodKind.ToMethodType(),
-                        methodRef.IsAbstract,
-                        true));
-                
+                if (methodRef.MethodKind != MethodKind.Constructor &&
+                    methodRef.MethodKind != MethodKind.BuiltinOperator)
+                {
+                    var name = methodRef.ContainingNamespace.ToUniqueString() + "." +
+                               methodRef.GetUniqueMethodName(currentNode.Item1);
+                    if (currentNode.Item2 == 0)
+                    {
+                        dependencies.Add(name);
+                    }
+                    else
+                    {
+                        shouldBeFresh.Add(name);
+                    }
+                }
+
                 continue;
             }
-            
+
             //Check if variable is local
             if (currentSymbol.Kind is not (SymbolKind.Local or SymbolKind.Parameter))
-                return (false, new List<MethodDependency>());
-            
-            var id = currentNode as IdentifierNameSyntax;
+                returnFresh = false;
+
+            var id = currentNode.Item1 as IdentifierNameSyntax;
 
             var declarationSyntax = node.DescendantNodes()
                 .OfType<VariableDeclaratorSyntax>()
                 .Where(x => x.Identifier.Text == id?.Identifier.Text)
                 .Select(x => x.Initializer?.Value).FirstOrDefault();
-            
-            if(declarationSyntax != null)
-                process.Push(declarationSyntax);
+
+            if (declarationSyntax != null)
+                process.Push((declarationSyntax, currentNode.Item2));
 
             //Check all assignments
-
             var assignments = node.DescendantNodes().OfType<AssignmentExpressionSyntax>()
-                .Where(x => (x.Left as IdentifierNameSyntax)?.Identifier.Text == id?.Identifier.Text)
                 .Select(x => x.Right).ToList();
-            
-            assignments.ForEach(process.Push);
+
+            assignments.ForEach(x => process.Push((x, currentNode.Item2)));
         }
 
-        return (true, dependencies);
+        return (returnFresh, dependencies, shouldBeFresh);
     }
 }
