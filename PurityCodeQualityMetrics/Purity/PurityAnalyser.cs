@@ -190,7 +190,7 @@ public class PurityAnalyser
             {
                 if (!c.ToString().Contains("nameof", StringComparison.CurrentCultureIgnoreCase))
                 {
-                    _logger.LogWarning($"Could not find symbol for {c.ToString()}");
+                    _logger.LogDebug($"Could not find symbol for {c.ToString()}");
                 }
  
                 return new MethodDependency(c.ToString());

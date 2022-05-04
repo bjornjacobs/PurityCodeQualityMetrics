@@ -6,6 +6,7 @@ using PurityCodeQualityMetrics.Purity;
 using PurityCodeQualityMetrics.Purity.Storage;
 
 var factory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Error));
+var logger = new OwnLogger();
 
 var project =
  //@"C:\Users\BjornJ\dev\PurityCodeQualityMetrics\PurityCodeQualityMetrics\PurityCodeQualityMetrics.csproj";
@@ -22,8 +23,8 @@ var project =
 var repo = new InMemoryReportRepo();
 repo.Clear();
 
-var analyzer = new PurityAnalyser(factory.CreateLogger<PurityAnalyser>());
-var calculator = new PurityCalculator(factory.CreateLogger<PurityCalculator>());
+var analyzer = new PurityAnalyser(logger);
+var calculator = new PurityCalculator(logger);
 
 var purityReports = project.EndsWith(".sln") ? await analyzer.GeneratePurityReports(project) : await analyzer.GeneratePurityReportsProject(project);
 repo.AddRange(purityReports);
