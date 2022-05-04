@@ -91,9 +91,9 @@ public class PurityCalculator
                     .ToList()
             );
 
-            var nonFresh = score.Report.Dependencies.Where(x => x.ReturnShouldBeFresh).Select(x => _table[x.FullName])
-                .Where(x => !x.ReturnIsFresh).Select(_ => PurityViolation.ModifiesNonFreshObject).ToList();
-            score.Violations.AddRange(nonFresh.Select(x => new ViolationWithDistance(1, x)));
+            var nonFresh = score.Report.Dependencies.Where(x => x.ReturnShouldBeFresh).Select(x => _table.GetValueOrDefault(x.FullName))
+                .Where(x => x != null && !x.ReturnIsFresh).Select(_ => PurityViolation.ModifiesNonFreshObject).ToList();
+            score.Violations.AddRange(nonFresh.Select(x => new ViolationWithDistance(0, x)));
 
             score.DependencyCount = depsOutside.Sum(x => x?.DependencyCount ?? 0) + componentDepCount;
             score.LinesOfSourceCode = depsOutside.Sum(x => x?.LinesOfSourceCode ?? 0) + componentsLines;

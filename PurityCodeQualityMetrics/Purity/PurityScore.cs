@@ -37,33 +37,35 @@ public class PurityScore
 
     public int LinesOfSourceCode { get; set; }
     
-    public void CalculateLevel()
+    public void CalculateLevel(int level = Int32.MaxValue)
     {
-        if (Violations.Any(x => x.Violation is PurityViolation.ReadsGlobalState or PurityViolation.ModifiesGlobalState))
+        var v = Violations.Where(x => x.Distance <= level).ToList();
+        
+        if (v.Any(x => x.Violation is PurityViolation.ReadsGlobalState or PurityViolation.ModifiesGlobalState))
         {
             Puritylevel = Puritylevel.Impure;
             return;
         }
 
-        if (Violations.Any(x => x.Violation is PurityViolation.ModifiesLocalState or PurityViolation.ReadsLocalState))
+        if (v.Any(x => x.Violation is PurityViolation.ModifiesLocalState or PurityViolation.ReadsLocalState))
         {
             Puritylevel = Puritylevel.LocallyImpure;
             return;
         }
 
-        if (Violations.Any(x => x.Violation is PurityViolation.ModifiesParameter))
+        if (v.Any(x => x.Violation is PurityViolation.ModifiesParameter))
         {
             Puritylevel = Puritylevel.ParameteclyImpure;
             return;
         }
         
-        if (Violations.Any(x => x.Violation is PurityViolation.ModifiesNonFreshObject))
+        if (v.Any(x => x.Violation is PurityViolation.ModifiesNonFreshObject))
         {
             Puritylevel = Puritylevel.NonFreshObjectImpure;
             return;
         }
 
-        if (Violations.Any(x => x.Violation is PurityViolation.ThrowsException))
+        if (v.Any(x => x.Violation is PurityViolation.ThrowsException))
         {
             Puritylevel = Puritylevel.ThrowsException;
             return;

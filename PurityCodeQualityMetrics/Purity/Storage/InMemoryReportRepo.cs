@@ -2,9 +2,9 @@
 
 public class InMemoryReportRepo : IPurityReportRepo
 {
-    private List<PurityReport> _reports = new List<PurityReport>();
+    private readonly List<PurityReport> _reports = new List<PurityReport>();
 
-    private object _key = new object();
+    private readonly object _key = new object();
 
     public PurityReport? GetByName(string name)
     {
@@ -23,6 +23,7 @@ public class InMemoryReportRepo : IPurityReportRepo
 
     public void AddRange(IEnumerable<PurityReport> reports)
     {
+        
         lock (_key)
         {
             _reports.RemoveAll(x => reports.Any(y => x.FullName == y.FullName));

@@ -45,7 +45,7 @@ public class PurityAnalyser
         var currentSolution = await workspace.OpenSolutionAsync(solution);
 
         if (currentSolution.Projects.All(x => !x.MetadataReferences.Any()))
-            throw new Exception("References are empty: this usually means that MsBuild didn't load correctly");
+            _logger.LogError("References are empty: this usually means that MsBuild didn't load correctly");
     
         _logger.LogInformation($"Loaded project: {solution}");
         return currentSolution.Projects
@@ -63,7 +63,7 @@ public class PurityAnalyser
         var project = await workspace.OpenProjectAsync(projectFile);
 
         if (!project.MetadataReferences.Any())
-            throw new Exception("References are empty: this usually means that MsBuild didn't load correctly");
+            _logger.LogInformation("References are empty: this usually means that MsBuild didn't load correctly");
     
         _logger.LogInformation($"Loaded project: {project.Name}");
         return AnalyseProject(project, project.Solution, new List<string>());
