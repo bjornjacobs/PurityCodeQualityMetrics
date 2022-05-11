@@ -16,11 +16,14 @@ public class OptimizedMetricRunner
 {
     private PurityAnalyser _purityAnalyser;
     private PurityCalculator _purityCalculator;
+    private Func<MethodDependency, PurityReport, PurityReport?> _unknownMethod;
 
-    public OptimizedMetricRunner(PurityAnalyser purityAnalyser, PurityCalculator purityCalculator)
+
+    public OptimizedMetricRunner(PurityAnalyser purityAnalyser, PurityCalculator purityCalculator, Func<MethodDependency, PurityReport, PurityReport?> unknownMethod)
     {
         _purityAnalyser = purityAnalyser;
         _purityCalculator = purityCalculator;
+        _unknownMethod = unknownMethod;
     }
 
     public async Task<List<MethodWithMetrics>> Run(string solutionPath, List<LinesChange> changes)
@@ -47,7 +50,7 @@ public class OptimizedMetricRunner
         var methodsSymbol = method.GetMethodSymbol(model)!;
 
         var report = _purityAnalyser.ExtractReportsFromMethodAndDependencies(method, model, solution, getModel);
-        var scores = _purityCalculator.CalculateScores(report, (dependency, purityReport) => null);
+        var scores = _purityCalculator.CalculateScores(report, _unknownMethod);
 
         
         var result = new MethodWithMetrics(methodsSymbol!.Name, method.SyntaxTree.FilePath);
@@ -96,13 +99,25 @@ public class OptimizedMetricRunner
 
 public record MethodWithMetrics(string MethodName, string FilePath)
 {
-    public List<ViolationWithDistance> Violations => PurityScore?.Violations;
-    public int DependencyCount => PurityScore?.DependencyCount ?? 0;
-    public int TotalLinesOfSourceCode => PurityScore?.LinesOfSourceCode ?? 0;
+    public List<ViolationWithDistance> Violations { get; set; }
+    public int DependencyCount { get; set; }
+    public int TotalLinesOfSourceCode { get; set; }
 
     [JsonIgnore]
-    public PurityScore PurityScore { get; set; }
+    public PurityScore PurityScore
+    {
+        get => _purityScore;
+        set
+        {
+            _purityScore = value;
+            Violations = _purityScore?.Violations;
+            DependencyCount = _purityScore?.DependencyCount ?? -1;
+            TotalLinesOfSourceCode = _purityScore?.LinesOfSourceCode ?? -1;
+        }
+    }
+
     public readonly IDictionary<Measure, double> Metrics = new Dictionary<Measure, double>();
+    private PurityScore _purityScore;
 }
 
 public static class SolutionHelper

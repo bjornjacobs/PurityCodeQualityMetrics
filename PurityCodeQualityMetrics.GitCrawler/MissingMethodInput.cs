@@ -38,6 +38,10 @@ public class MissingMethodInput
 
     public static PurityReport? FromConsole(MethodDependency dependency)
     {
+        if (!dependency.FullName.StartsWith("System", StringComparison.CurrentCultureIgnoreCase))
+            return null;
+        
+        Console.Beep();
         var state = new State
         {
             CurrentFunctionName = dependency.FullName

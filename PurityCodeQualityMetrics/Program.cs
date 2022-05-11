@@ -7,19 +7,20 @@ using PurityCodeQualityMetrics.Purity.Storage;
 
 var factory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Error));
 var logger = new OwnLogger();
+logger.LogInformation("");
 
 var project =
  //@"C:\Users\BjornJ\dev\PurityCodeQualityMetrics\PurityCodeQualityMetrics\PurityCodeQualityMetrics.csproj";
  //@"C:\Users\BjornJ\dev\PureTest\PureTest.csproj";
  //@"C:\Users\BjornJ\dev\PurityCodeQualityMetrics\PurityCodeQualityMetrics.sln";
- //@"C:\Users\BjornJ\dev\repos\MoreLINQ\MoreLinq\MoreLinq.csproj";
+ @"C:\Users\BjornJ\dev\repos\MoreLINQ\MoreLinq\MoreLinq.csproj";
 // @"C:\Users\BjornJ\dev\repos\jellyfin\Jellyfin.sln";
- //@"C:\Users\BjornJ\dev\repos\roslyn\Roslyn.sln";
+// @"C:\Users\BjornJ\dev\repos\roslyn\Roslyn.sln";
  //@"C:\Users\BjornJ\dev\repos\IdentityServer4\src\IdentityServer4\IdentityServer4.sln";
- //@"C:\Users\BjornJ\dev\repos\akka.net\src\Akka.sln";
+// @"C:\Users\BjornJ\dev\repos\akka.net\src\Akka.sln";
  //@"C:\Users\BjornJ\dev\repos\ILSpy\ILSpy.sln";
  //@"C:\Users\BjornJ\dev\repos\machinelearning\Microsoft.ML.sln";
- @"C:\Users\BjornJ\dev\repos\stryker-net\src\Stryker.sln";
+ //@"C:\Users\BjornJ\dev\repos\stryker-net\src\Stryker.sln";
 var repo = new InMemoryReportRepo();
 repo.Clear();
 
@@ -34,7 +35,8 @@ var score = calculator.CalculateScores(purityReports, (dependency, report) => nu
 //ConsoleTable.From(score.Select(x =>  new {Name = x.Report.Name, Violations = string.Join(",", x.Violations.Select(x => $"{x.Violation}({x.Distance})"))})).Write();
 //ConsoleTable.From(score.Select(x =>  new {Name = x.Report.Name, Violations = x.Puritylevel})).Write();
 //score.ForEach(x => x.CalculateLevel(0));
-var g = score.SelectMany(x => x.Violations.Where(x => x.Distance == 0).Select(x => x.Violation)).GroupBy(x => x);
+var g = score.SelectMany(x => x.Violations.Where(x => x.Distance == 0 && x.Violation != PurityViolation.ThrowsException)
+ .Select(x => x.Violation)).GroupBy(x => x);
 int total = g.Sum(x => x.Count());
 foreach(var x in g)
  Console.WriteLine($"{x.Key}, {x.Count()}, {x.Count() / (total / 100d):0.##}%");

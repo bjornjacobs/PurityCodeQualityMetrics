@@ -36,7 +36,7 @@ public class LandkroonInterface
     {
         var repo = new Repository(project.RepoPath);
         Console.WriteLine($"Starting crawling {project.RepositoryName}. Resetting to branch {project.MainBranch}");
-        Commands.Checkout(repo, project.MainBranch);
+        repo.Reset(ResetMode.Hard, project.MainBranch);
         var commitsWithIssues = GetCommitsWIthIssues(repo, project);
         
         foreach (var commit in commitsWithIssues)
@@ -52,6 +52,7 @@ public class LandkroonInterface
                     _logger.LogInformation("Commit didn't change any csharp files");
                     continue;
                 }
+
                 Console.WriteLine("Checking out before");
                 var before = await MetricsForCommit(project, repo, parentCommit, codeChanges.Select(x => x.Removed));
                 Console.WriteLine("Checking out after");
@@ -83,6 +84,7 @@ public class LandkroonInterface
             var b = before.FirstOrDefault(x => x.PurityScore.Report.FullName == func.FullName);
             var a = after.FirstOrDefault(x => x.PurityScore.Report.FullName == func.FullName);
             var rating = new FunctionOutput(func.FullName, b, a);
+            rating.MethodType = b != null ? b.PurityScore.Report.MethodType : a.PurityScore.Report.MethodType;
             return rating;
         }).ToList();
 
@@ -93,20 +95,50 @@ public class LandkroonInterface
     {
         CheckoutCommit(repository, commit); // Get all changes since last state on disk
         var solutionFile = project.SolutionFile.Select(x => Path.Combine(project.RepoPath, x))
-            .First(File.Exists); //FInd the right solution file.
-                
+            .FirstOrDefault(File.Exists); //FInd the right solution file.
+
+        if (solutionFile == null)
+        {
+            Console.WriteLine("Could not find sln files from list trying to find other sln file");
+            solutionFile = FirstSlnInDirectory(Path.GetDirectoryName(Path.Combine(project.RepoPath, project.SolutionFile.First()))!);
+        }
+        
         var metrics = await AnalyseCode(solutionFile, codeChanges.ToList());
 
         return metrics;
     }
 
+    private static string FirstSlnInDirectory(string dir)
+    {
+        return Directory.GetFiles(dir).FirstOrDefault(x =>
+                   Path.GetExtension(x).Contains("sln", StringComparison.CurrentCultureIgnoreCase)) ??
+               throw new Exception($"No sln found in {dir}");
+    }
+
     private async Task<List<MethodWithMetrics>> AnalyseCode(string solution, List<LinesChange> changes)
     {
        
-        var runner = new OptimizedMetricRunner(_purityAnalyser, _purityCalculator);
+        var runner = new OptimizedMetricRunner(_purityAnalyser, _purityCalculator, InputUnknownMethod);
         var metrics = await runner.Run(solution, changes);
         Console.WriteLine($"Found metrics for {metrics.Count} methods");
         return metrics;
+    }
+
+    private PurityReport? InputUnknownMethod(MethodDependency dependency, PurityReport context)
+    {
+        var previousInput = _nonVolitilePurityRepo.GetByFullName(dependency.FullName);
+        if (previousInput != null) return previousInput;
+        
+        var manualInput = MissingMethodInput.FromConsole(dependency);
+
+        if (manualInput != null)
+        {
+            _nonVolitilePurityRepo.AddRange(new []{manualInput});
+            _purityReportRepo.AddRange(new[] {manualInput});
+        }
+
+        
+        return manualInput;
     }
 
     private void CheckoutCommit(Repository repository, Commit commit)

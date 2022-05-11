@@ -27,6 +27,9 @@ public class IdentifierViolationPolicy : IViolationPolicy
 
                 if (symbol.IsStatic)
                 {
+                    if (symbol is  IMethodSymbol || (symbol is not IFieldSymbol && type?.TypeKind == TypeKind.Class) || (symbol is IFieldSymbol fs && (fs.IsConst || fs.IsReadOnly)))
+                        return PurityViolation.UnknownMethod;
+                    ;
                     return x.Node.IsAssignedTo() ? PurityViolation.ModifiesGlobalState : PurityViolation.ReadsGlobalState;
                 }
                 

@@ -19,19 +19,19 @@ public static class FreshAnalyser
         node.DescendantNodesInThisFunction().OfType<ReturnStatementSyntax>()
             .Select(x => x.Expression!)
             .ToList()
-            .ForEach(x => queue.Push((x, CheckType.ReturnValue)));
+            .ForEach(x => queue.Enqueue((x, CheckType.ReturnValue)));
 
         node.DescendantNodesInThisFunction()
             .OfType<VariableDeclaratorSyntax>()
             .Select(x => x.Initializer?.Value)
             .ToList()
-            .ForEach(x => queue.Push((x, CheckType.FreshDependency)));
+            .ForEach(x => queue.Enqueue((x, CheckType.FreshDependency)));
         
         node.DescendantNodesInThisFunction()
             .OfType<AssignmentExpressionSyntax>()
             .Select(x => x.Right)
             .ToList()
-            .ForEach(x => queue.Push((x, CheckType.FreshDependency)));
+            .ForEach(x => queue.Enqueue((x, CheckType.FreshDependency)));
         
         
         bool returnIsFresh = true;
@@ -39,7 +39,7 @@ public static class FreshAnalyser
         var shouldBeFresh = new List<string>();
         while (queue.HasItems)
         {
-            var currentNode = queue.Pop();
+            var currentNode = queue.Dequeue();
             if(currentNode.Node == null) continue;
             
             
@@ -76,13 +76,13 @@ public static class FreshAnalyser
                 .Select(x => x.Initializer?.Value).FirstOrDefault();
 
             if (declarationSyntax != null)
-                queue.Push((declarationSyntax, currentNode.Type));
+                queue.Enqueue((declarationSyntax, currentNode.Type));
 
             //Check all assignments
             var assignments = node.DescendantNodes().OfType<AssignmentExpressionSyntax>()
                 .Select(x => x.Right).ToList();
 
-            assignments.ForEach(x => queue.Push((x, currentNode.Type)));
+            assignments.ForEach(x => queue.Enqueue((x, currentNode.Type)));
         }
 
         //If void or value type the returns value is always fresh
@@ -99,26 +99,26 @@ public static class FreshAnalyser
 /// </summary>
 class QueueOnlyOnce<T>
 {
-    private readonly IDictionary<T, bool> _memory = new Dictionary<T, bool>();
-    private readonly Queue<T> _queue = new Queue<T>();
+    private readonly HashSet<T> _memory = new ();
+    private readonly Queue<T> _queue = new ();
 
     public int Count => _queue.Count;
     public bool HasItems => Count > 0;
 
-    public T Pop()
+    public T Dequeue()
     {
         return _queue.Dequeue();
     }
 
-    public void Push(T val)
+    public void Enqueue(T val)
     {
         if(val == null)
             return;
         
-        if(_memory.ContainsKey(val))
+        if(_memory.Contains(val))
             return;
         
         _queue.Enqueue(val);
-        _memory[val] = true;
+        _memory.Add(val);
     }
 }

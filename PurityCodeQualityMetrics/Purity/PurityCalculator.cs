@@ -7,6 +7,7 @@ public class PurityCalculator
 {
     private readonly ILogger _logger;
     private readonly Dictionary<string, PurityScore> _table = new Dictionary<string, PurityScore>();
+    private readonly Dictionary<string, PurityReport> _reportTable = new Dictionary<string, PurityReport>();
 
     public PurityCalculator(ILogger logger)
     {
@@ -17,10 +18,20 @@ public class PurityCalculator
         Func<MethodDependency, PurityReport, PurityReport?> GetUnknown)
     {
         _table.Clear();
+        _reportTable.Clear();
+        
+        reports.ForEach(x =>
+        {
+            if(!_reportTable.ContainsKey(x.FullName))
+                _reportTable[x.FullName] = x;
+        });
+        
+
+        
         _logger.LogInformation("Starting calculating scores");
         //Calculate the unkown methods: e.g. methods that we don't have a purity report on
         var allDependencies = reports.SelectMany(x => x.Dependencies).DistinctBy(x => x.FullName);
-        var unknowns = allDependencies.Where(d => reports.All(r => d.FullName != r.FullName))
+        var unknowns = allDependencies.Where(d => !_reportTable.ContainsKey(d.FullName))
             .Select(x => x.FullName).ToList();
 
         _logger.LogInformation($"Program has {unknowns.Count} unknown methods");
@@ -30,13 +41,13 @@ public class PurityCalculator
         var graph = reports.Select(x => x.FullName).Concat(unknowns).ToArray();
 
         var components = graph.DetectCycles(arg =>
-            reports.FirstOrDefault(x => x.FullName == arg)?.Dependencies.Select(x => x.FullName) ?? new List<string>()
+            _reportTable.GetValueOrDefault(arg)?.Dependencies.Select(x => x.FullName) ?? new List<string>()
         );
 
         _logger.LogInformation($"Program has {components.Count} strongly connected components");
 
         //Calculate the purity per component
-        var finder = (string name) => reports.FirstOrDefault(x => x.FullName == name);
+        var finder = (string name) => _reportTable.GetValueOrDefault(name);
         return components.SelectMany(x =>
             CalculateScoreForComponent(x.Select(finder).Where(x => x != null).ToList()!, finder, GetUnknown)).ToList();
     }

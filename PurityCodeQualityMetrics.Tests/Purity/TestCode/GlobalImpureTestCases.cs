@@ -65,11 +65,30 @@ public class GloballyImpureTestClass
     {
         var d = TestEnum.Functions;
     }
+    
+    [ViolationsTest]
+    public void TestCallStaticMethod()
+    {
+        GloballyImpureTestClass2.DoSomthingPure();
+    }
+    
+    [ViolationsTest]
+    public void StaticCons()
+    {
+        var x = GloballyImpureTestClass2.ConstInt;
+    }
 }
 
 public class GloballyImpureTestClass2
 {
     public static int PublicState = 1;
+    
+    public static readonly int ConstInt = 5;
+
+    public static void DoSomthingPure()
+    {
+        
+    }
 }
 
 public enum TestEnum

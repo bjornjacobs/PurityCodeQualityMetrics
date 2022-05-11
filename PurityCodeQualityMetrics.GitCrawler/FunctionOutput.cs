@@ -7,6 +7,8 @@ public class FunctionOutput
     public string CommitHash { get; set; }
     public string FullName { get; set; }
     
+    public MethodType MethodType { get; set; }
+    
     public MethodWithMetrics Before { get; set; }
     public MethodWithMetrics After { get; set; }
 

@@ -118,7 +118,7 @@ public class PurityAnalyser
                         var s = model.GetSymbolInfo(x);
                         if (s.Symbol == null) return null;
 
-                        return s.Symbol.OriginalDefinition.DeclaringSyntaxReferences
+                        return s.Symbol.DeclaringSyntaxReferences
                             .First().GetSyntax();
                     }
                     catch (Exception e)
@@ -132,7 +132,7 @@ public class PurityAnalyser
             deps.ForEach(Calc);
         }
 
-        return cache.Select(x => x.Value).ToList();
+        return cache.Select(x => x.Value).DistinctBy(x => x.FullName).ToList();
     }
 
     public PurityReport ExtractReportFromDeclaration(SyntaxNode method, SemanticModel model, Solution solution)
