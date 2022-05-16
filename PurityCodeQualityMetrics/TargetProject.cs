@@ -33,12 +33,13 @@ namespace PurityCodeQualityMetrics.GitCrawler
         }
 
         public static TargetProject? ByName(string name) => GetTargetProjects()
-            .FirstOrDefault(x => x.RepositoryName.Equals(name, StringComparison.CurrentCultureIgnoreCase));
+            .Single(x => x.RepositoryName.Contains(name, StringComparison.CurrentCultureIgnoreCase));
 
         public static TargetProject[] GetTargetProjects()
         {
             return new[]
             {
+                new TargetProject("dotnet", "roslyn", "Roslyn.sln", "bug", mainBranch: "origin/main"),
                 new TargetProject("dotnet", "machinelearning", new List<string>{"AutoML.sln", "Microsoft.ML.sln"}, "bug", "origin/main"),
                 new TargetProject("jellyfin", "jellyfin",  new List<string>{"Jellyfin.sln", "MediaBrowser.sln"}),
                 new TargetProject("akkadotnet", "akka.net", @"src\Akka.sln", "confirmed bug"),
@@ -46,10 +47,10 @@ namespace PurityCodeQualityMetrics.GitCrawler
                     new List<string>{@"src\IdentityServer4.Core.sln", @"src\IdentityServer4\IdentityServer4.sln",@"IdentityServer4.sln"},"bug", "origin/main"),
                 new TargetProject("icsharpcode", "ILSpy", "ILSpy.sln"),
                 new TargetProject("morelinq", "MoreLINQ", "MoreLinq.sln"),
-                new TargetProject("Humanizr", "Humanizer", "src/Humanizer.All.sln"),
-                new TargetProject("dotnet", "reactive", @"Rx.NET\Source\System.Reactive.sln"),
-                new TargetProject("OpenRA", "OpenRA", "OpenRA.sln"),
-                new TargetProject("shadowsocks", "shadowsocks-windows", "shadowsocks-windows.sln"),
+                new TargetProject("Humanizr", "Humanizer", "src/Humanizer.All.sln","bug", "origin/main"),
+                new TargetProject("dotnet", "reactive", @"Rx.NET\Source\System.Reactive.sln","bug", "origin/main"),
+                new TargetProject("OpenRA", "OpenRA", "OpenRA.sln", "bug", "origin/main"),
+                new TargetProject("shadowsocks", "shadowsocks-windows", "shadowsocks-windows.sln","bug", "origin/main"),
                 new TargetProject("JetBrains", "resharper-unity", @"resharper\resharper-unity.sln"),
             };
         }
