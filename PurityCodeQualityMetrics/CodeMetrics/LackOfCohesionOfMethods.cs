@@ -18,7 +18,7 @@ namespace PurityCodeQualityMetrics.CodeMetrics
                 string methodName = method.Identifier.ValueText;
 
                 IEnumerable<SyntaxNode> variablesUsed = method
-                    .DescendantNodesInThisFunction()
+                    .DescendantNodes()
                     .Where(x => x is IdentifierNameSyntax);
                 HashSet<string> fieldVariables = new HashSet<string>();
                 foreach (SyntaxNode syntaxNode in variablesUsed)
@@ -46,6 +46,7 @@ namespace PurityCodeQualityMetrics.CodeMetrics
 
             int pairsWithoutSharedFieldVariables = 0;
             int pairsWithSharedFieldVariables = 0;
+            
 
             for (int i = 0; i < methodNames.Count - 1; i++)
             {
@@ -64,7 +65,7 @@ namespace PurityCodeQualityMetrics.CodeMetrics
                 }
 
             }
-
+            
             int lcom = pairsWithoutSharedFieldVariables - pairsWithSharedFieldVariables;
             return Math.Max(0, lcom);
         }

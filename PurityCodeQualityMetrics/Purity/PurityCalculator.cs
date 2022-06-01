@@ -34,6 +34,7 @@ public class PurityCalculator
         var unknowns = allDependencies.Where(d => !_reportTable.ContainsKey(d.FullName))
             .Select(x => x.FullName).ToList();
 
+
         _logger.LogInformation($"Program has {unknowns.Count} unknown methods");
 
         //Calculate the strongly connected components using Tarjan's algorithm

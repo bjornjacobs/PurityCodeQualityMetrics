@@ -1,12 +1,12 @@
 ﻿using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace PurityCodeQualityMetrics.Purity;
 
 public class ViolationWithDistance
 {
-    [JsonPropertyName("D")]
     public int Distance { get; set; }
-    [JsonPropertyName("V")]
+    
     public PurityViolation Violation { get; set; }
 
 

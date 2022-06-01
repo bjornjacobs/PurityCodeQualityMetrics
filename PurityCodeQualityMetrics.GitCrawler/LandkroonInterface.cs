@@ -20,8 +20,8 @@ public class LandkroonInterface
     private IssueService _issueService = new IssueService();
 
     private IPurityReportRepo _nonVolitilePurityRepo = new EfPurityRepo("standard_lib");
-    
-    public static string OutputDir  =>
+
+    public static string OutputDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "dev", "repos", "results");
 
     public LandkroonInterface(ILogger logger, PurityAnalyser purityAnalyser, PurityCalculator purityCalculator)
@@ -36,16 +36,23 @@ public class LandkroonInterface
     {
         var repo = new Repository(project.RepoPath);
         Console.WriteLine($"Starting crawling {project.RepositoryName}. Resetting to branch {project.MainBranch}");
-        repo.Reset(ResetMode.Hard, project.MainBranch);
+       // repo.Reset(ResetMode.Hard, project.MainBranch);
         var commitsWithIssues = GetCommitsWIthIssues(repo, project);
-        
+
         foreach (var commit in commitsWithIssues)
         {
+            if(commit.Message.Contains("(#58509)"))
+                continue;
+
             Console.WriteLine($"Starting analysis for {commit.MessageShort} has {commit.Parents.Count()} parents");
             foreach (var parentCommit in commit.Parents)
             {
+                if(parentCommit.Message.Contains("(#58509)"))
+                    continue;
+                
                 Console.WriteLine($"Checking out parent {commit.MessageShort}");
-                var codeChanges = repo.Diff.Compare<Patch>(commit.Tree, parentCommit.Tree) // Get all changes compared to the parent
+                var codeChanges = repo.Diff
+                    .Compare<Patch>(commit.Tree, parentCommit.Tree) // Get all changes compared to the parent
                     .SelectMany(x => x.GetFileChangesFromPatch()).ToList();
                 if (codeChanges.All(x => Path.GetExtension(x.Path) != ".cs"))
                 {
@@ -68,8 +75,10 @@ public class LandkroonInterface
     private static void AppendResults(string path, List<FunctionOutput> newResults)
     {
         Directory.CreateDirectory(OutputDir);
-        
-        var existing = File.Exists(path) ? JsonSerializer.Deserialize<List<FunctionOutput>>(File.ReadAllText(path)) : new List<FunctionOutput>();
+
+        var existing = File.Exists(path)
+            ? JsonSerializer.Deserialize<List<FunctionOutput>>(File.ReadAllText(path))
+            : new List<FunctionOutput>();
         existing.AddRange(newResults);
         File.WriteAllText(path, JsonSerializer.Serialize(existing));
     }
@@ -77,8 +86,12 @@ public class LandkroonInterface
     private List<FunctionOutput> GetScorePerFunction(List<MethodWithMetrics> before, List<MethodWithMetrics> after)
     {
         var allFunctions = before.Concat(after)
-            .Select(x => new {x.PurityScore.Report.FullName, Class = x.PurityScore.Report.Namespace + "." + x.PurityScore.Report.Name.Split(".").First()}).ToList();
-                
+            .Select(x => new
+            {
+                x.PurityScore.Report.FullName,
+                Class = x.PurityScore.Report.Namespace + "." + x.PurityScore.Report.Name.Split(".").First()
+            }).ToList();
+
         var data = allFunctions.Select(func =>
         {
             var b = before.FirstOrDefault(x => x.PurityScore.Report.FullName == func.FullName);
@@ -91,7 +104,8 @@ public class LandkroonInterface
         return data;
     }
 
-    private async Task<List<MethodWithMetrics>> MetricsForCommit(TargetProject project, Repository repository, Commit commit, IEnumerable<LinesChange> codeChanges)
+    private async Task<List<MethodWithMetrics>> MetricsForCommit(TargetProject project, Repository repository,
+        Commit commit, IEnumerable<LinesChange> codeChanges)
     {
         CheckoutCommit(repository, commit); // Get all changes since last state on disk
         var solutionFile = project.SolutionFile.Select(x => Path.Combine(project.RepoPath, x))
@@ -100,9 +114,11 @@ public class LandkroonInterface
         if (solutionFile == null)
         {
             Console.WriteLine("Could not find sln files from list trying to find other sln file");
-            solutionFile = FirstSlnInDirectory(Path.GetDirectoryName(Path.Combine(project.RepoPath, project.SolutionFile.First()))!);
+            solutionFile =
+                FirstSlnInDirectory(
+                    Path.GetDirectoryName(Path.Combine(project.RepoPath, project.SolutionFile.First()))!);
         }
-        
+
         var metrics = await AnalyseCode(solutionFile, codeChanges.ToList());
 
         return metrics;
@@ -117,7 +133,6 @@ public class LandkroonInterface
 
     private async Task<List<MethodWithMetrics>> AnalyseCode(string solution, List<LinesChange> changes)
     {
-       
         var runner = new OptimizedMetricRunner(_purityAnalyser, _purityCalculator, InputUnknownMethod);
         var metrics = await runner.Run(solution, changes);
         Console.WriteLine($"Found metrics for {metrics.Count} methods");
@@ -126,18 +141,31 @@ public class LandkroonInterface
 
     private PurityReport? InputUnknownMethod(MethodDependency dependency, PurityReport context)
     {
-        var previousInput = _nonVolitilePurityRepo.GetByFullName(dependency.FullName);
-        if (previousInput != null) return previousInput;
+       // Console.WriteLine("Creating mutex....");
+
+        const string myAppName = "ACCESS_SQLITE_DATABASE_PURITY_METRICS_MUTEX";
+        bool isCreatedNew;
+        using var objMutex = new Mutex(false, myAppName, out isCreatedNew);
+        objMutex.WaitOne();
         
+        var previousInput = _nonVolitilePurityRepo.GetByFullName(dependency.FullName);
+        if (previousInput != null)
+        {
+           objMutex.ReleaseMutex();
+      //      Console.WriteLine("Found.. Releasing mutex....");
+            return previousInput;
+        }
+
         var manualInput = MissingMethodInput.FromConsole(dependency);
 
         if (manualInput != null)
         {
-            _nonVolitilePurityRepo.AddRange(new []{manualInput});
+            _nonVolitilePurityRepo.AddRange(new[] {manualInput});
             _purityReportRepo.AddRange(new[] {manualInput});
         }
 
-        
+    //    Console.WriteLine("Done.. Releasing mutex....");
+        objMutex.ReleaseMutex();
         return manualInput;
     }
 
@@ -147,8 +175,9 @@ public class LandkroonInterface
         currentCommitState = commit;
     }
 
-    private List<Commit> GetCommitsWIthIssues(Repository repo, TargetProject project)
+    public static List<Commit> GetCommitsWIthIssues(Repository repo, TargetProject project)
     {
+        var _issueService = new IssueService();
         var issues = _issueService.GetIssues(project).Select(x => x.Number).ToList();
 
         var bugCommits = repo.Commits

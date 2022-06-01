@@ -20,7 +20,7 @@ public class OwnLogger : ILogger
 
     public OwnLogger()
     {
-        Level = LogLevel.Information;
+        Level = LogLevel.Warning;
     }
     
     public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)

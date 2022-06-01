@@ -34,11 +34,12 @@ public class PurityAnalyser
     {
         return await GeneratePurityReports(solution, new List<string>());
     }
-    
-    public async Task<List<PurityReport>> GeneratePurityReports(string solution, List<string> files, bool ignoreTestProject = true)
-    { 
+
+    public async Task<List<PurityReport>> GeneratePurityReports(string solution, List<string> files,
+        bool ignoreTestProject = true)
+    {
         _logger.LogInformation("Starting compilation");
-        if(!MSBuildLocator.IsRegistered)
+        if (!MSBuildLocator.IsRegistered)
             MSBuildLocator.RegisterDefaults();
         using var workspace = MSBuildWorkspace.Create();
         workspace.WorkspaceFailed += (o, e) => _logger.LogWarning("Workspace error: {}", e.Diagnostic.Message);
@@ -46,17 +47,17 @@ public class PurityAnalyser
 
         if (currentSolution.Projects.All(x => !x.MetadataReferences.Any()))
             _logger.LogError("References are empty: this usually means that MsBuild didn't load correctly");
-    
+
         _logger.LogInformation($"Loaded project: {solution}");
         return currentSolution.Projects
             .Where(x => !ignoreTestProject || !x.Name.Contains("test", StringComparison.CurrentCultureIgnoreCase))
             .SelectMany(x => AnalyseProject(x, currentSolution, files)).AsParallel().ToList();
     }
-    
+
     public async Task<List<PurityReport>> GeneratePurityReportsProject(string projectFile)
-    { 
+    {
         _logger.LogInformation("Starting compilation");
-        if(!MSBuildLocator.IsRegistered)
+        if (!MSBuildLocator.IsRegistered)
             MSBuildLocator.RegisterDefaults();
         using var workspace = MSBuildWorkspace.Create();
         workspace.WorkspaceFailed += (o, e) => _logger.LogWarning("Workspace error: {}", e.Diagnostic.Message);
@@ -64,7 +65,7 @@ public class PurityAnalyser
 
         if (!project.MetadataReferences.Any())
             _logger.LogInformation("References are empty: this usually means that MsBuild didn't load correctly");
-    
+
         _logger.LogInformation($"Loaded project: {project.Name}");
         return AnalyseProject(project, project.Solution, new List<string>());
     }
@@ -77,38 +78,45 @@ public class PurityAnalyser
         var errors = compilation.GetDiagnostics().Where(n => n.Severity == DiagnosticSeverity.Error).ToList();
         _logger.LogInformation($"Project {project.Name}: compiled with {errors.Count} errors");
         errors.ForEach(x => _logger.LogDebug("[COMPILER_ERROR] " + x.Location + " " + x.GetMessage()));
-    
+
         return ExtractMethodReports(compilation, solution, files);
     }
 
-    
-    
 
     private List<PurityReport> ExtractMethodReports(Compilation compilation, Solution solution, List<string> files)
     {
         //Each syntax tree represents a file. Filter on files if there are any
-        
-        return compilation.SyntaxTrees.Where(x => !files.Any() || files.Any(y => x.FilePath.Contains(y, StringComparison.CurrentCultureIgnoreCase))).SelectMany(tree =>
-            tree.GetAllMethods().Select(m => ExtractReportFromDeclaration(m, compilation.GetSemanticModel(tree), solution))
-        ).ToList();
+
+        return compilation.SyntaxTrees.Where(x =>
+                !files.Any() || files.Any(y => x.FilePath.Contains(y, StringComparison.CurrentCultureIgnoreCase)))
+            .SelectMany(tree =>
+                tree.GetAllMethods()
+                    .Select(m => ExtractReportFromDeclaration(m, compilation.GetSemanticModel(tree), solution))
+            ).ToList();
     }
 
-    public List<PurityReport> ExtractReportsFromMethodAndDependencies(SyntaxNode method, SemanticModel model,
+    public (PurityReport Main, List<PurityReport> Graph) ExtractReportsFromMethodAndDependencies(SyntaxNode method,
+        SemanticModel model,
         Solution solution, Func<SyntaxTree, SemanticModel> getModel)
     {
-        var cache = new Dictionary<SyntaxNode, PurityReport>();
+        var queue = new QueueOnlyOnce<SyntaxNode>();
+        var lst = new List<PurityReport>();
+        PurityReport? mainreport = null;
         
-        Calc(method);
-
-        void Calc(SyntaxNode node)
+        queue.Enqueue(method);
+        
+        while (queue.HasItems)
         {
-            if (cache.ContainsKey(node)) return; 
+            var item = queue.Dequeue();
             
-            var result = ExtractReportFromDeclaration(method, model, solution);
-            cache[node] = result;
+            var result = ExtractReportFromDeclaration(item, model, solution);
+            if (mainreport == null)
+                mainreport = result;
+            
+            lst.Add(result);
             
             //Recursive for dependencies
-            var deps = node.DescendantNodesInThisFunction()
+            var deps = item.DescendantNodesInThisFunction()
                 .OfType<InvocationExpressionSyntax>()
                 .Select(x =>
                 {
@@ -118,21 +126,29 @@ public class PurityAnalyser
                         var s = model.GetSymbolInfo(x);
                         if (s.Symbol == null) return null;
 
-                        return s.Symbol.DeclaringSyntaxReferences
-                            .First().GetSyntax();
+                        var locations = s.Symbol.Locations.FirstOrDefault();
+                        if (locations == null || !locations.IsInSource) return null;
+
+                        var dec = locations.SourceTree
+                            .GetRoot()
+                            .DescendantNodes()
+                            .OfType<MethodDeclarationSyntax>()
+                            .Where(x => x.Identifier.Text == s.Symbol.Name)
+                            .Select(x => (model.GetDeclaredSymbol(x), x))
+                            .Single(x => x.Item1 != null && SymbolEqualityComparer.Default.Equals(x.Item1, s.Symbol));
+                        return dec.x;
                     }
                     catch (Exception e)
                     {
                         return null;
                     }
-      
                 })
                 .Where(x => x != null)
                 .ToList();
-            deps.ForEach(Calc);
+            deps.ForEach(x => queue.Enqueue(x));
         }
-
-        return cache.Select(x => x.Value).DistinctBy(x => x.FullName).ToList();
+        
+        return (mainreport!, lst);
     }
 
     public PurityReport ExtractReportFromDeclaration(SyntaxNode method, SemanticModel model, Solution solution)
@@ -151,20 +167,20 @@ public class PurityAnalyser
         report.LineEnd = method.GetLocation().GetLineSpan().Span.End.Line + 1;
 
         report.SourceLinesOfCode = SourceLinesOfCode.GetCount(method);
-        
+
 
         report.MethodType = workingSymbol.MethodKind.ToMethodType();
         report.Violations.AddRange(ExtractPurityViolations(method, model));
         report.Dependencies.AddRange(ExtractMethodDependencies(method, model, solution));
-        
+
         var freshResult = method.IsReturnFresh(model);
         report.ReturnValueIsFresh = freshResult.IsFresh;
         report.Dependencies.Where(x => freshResult.Dependencies.Any(y => x.FullName == y)).ToList()
             .ForEach(x => x.FreshDependsOnMethodReturnIsFresh = true);
-        
+
         report.Dependencies.Where(x => freshResult.ShouldBeFresh.Any(y => x.FullName == y)).ToList()
             .ForEach(x => x.ReturnShouldBeFresh = true);
-        
+
         return report;
     }
 
@@ -180,22 +196,22 @@ public class PurityAnalyser
         var invocations = m.DescendantNodes().OfType<InvocationExpressionSyntax>().Cast<SyntaxNode>();
         var lambdas = m.DescendantNodes().OfType<LambdaExpressionSyntax>().Cast<SyntaxNode>();
 
-        return lambdas.Concat(invocations).Select( c =>
+        return lambdas.Concat(invocations).Select(c =>
         {
             if (c.IsLogging()) return null;
-            
+
             var symbol = model.GetSymbolInfo(c).Symbol as IMethodSymbol;
-            
+
             if (symbol == null)
             {
                 if (!c.ToString().Contains("nameof", StringComparison.CurrentCultureIgnoreCase))
                 {
                     _logger.LogDebug($"Could not find symbol for {c.ToString()}");
                 }
- 
+
                 return new MethodDependency(c.ToString());
             }
-            
+
             return new MethodDependency(symbol.GetUniqueMethodName(c),
                 symbol.ContainingNamespace.ToUniqueString(),
                 symbol.ReturnType.ToUniqueString(),

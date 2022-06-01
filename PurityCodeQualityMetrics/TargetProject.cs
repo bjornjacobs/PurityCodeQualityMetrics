@@ -39,7 +39,7 @@ namespace PurityCodeQualityMetrics.GitCrawler
         {
             return new[]
             {
-                new TargetProject("dotnet", "roslyn", "Roslyn.sln", "bug", mainBranch: "origin/main"),
+               new TargetProject("dotnet", "roslyn", "Roslyn.sln", "bug", mainBranch: "origin/main"),
                 new TargetProject("dotnet", "machinelearning", new List<string>{"AutoML.sln", "Microsoft.ML.sln"}, "bug", "origin/main"),
                 new TargetProject("jellyfin", "jellyfin",  new List<string>{"Jellyfin.sln", "MediaBrowser.sln"}),
                 new TargetProject("akkadotnet", "akka.net", @"src\Akka.sln", "confirmed bug"),
@@ -48,8 +48,8 @@ namespace PurityCodeQualityMetrics.GitCrawler
                 new TargetProject("icsharpcode", "ILSpy", "ILSpy.sln"),
                 new TargetProject("morelinq", "MoreLINQ", "MoreLinq.sln"),
                 new TargetProject("Humanizr", "Humanizer", "src/Humanizer.All.sln","bug", "origin/main"),
-                new TargetProject("dotnet", "reactive", @"Rx.NET\Source\System.Reactive.sln","bug", "origin/main"),
-                new TargetProject("OpenRA", "OpenRA", "OpenRA.sln", "bug", "origin/main"),
+               new TargetProject("dotnet", "reactive", @"Rx.NET\Source\System.Reactive.sln","bug", "origin/main"),
+                new TargetProject("OpenRA", "OpenRA", "OpenRA.sln", "bug", "origin/bleed"),
                 new TargetProject("shadowsocks", "shadowsocks-windows", "shadowsocks-windows.sln","bug", "origin/main"),
                 new TargetProject("JetBrains", "resharper-unity", @"resharper\resharper-unity.sln"),
             };

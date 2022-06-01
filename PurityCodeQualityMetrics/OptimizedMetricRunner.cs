@@ -5,10 +5,12 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.Text;
+using Newtonsoft.Json;
 using PurityCodeQualityMetrics.CodeMetrics;
 using PurityCodeQualityMetrics.Purity;
 using PurityCodeQualityMetrics.Purity.Util;
 using RestSharp;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace PurityCodeQualityMetrics;
 
@@ -44,18 +46,60 @@ public class OptimizedMetricRunner
         return metrics;
     }
 
+    public async Task RunAll(string solutionPath, string writeTo)
+    {
+        var solution = await GetSolution(solutionPath);
+        var projects = solution.NonTestProjects();
+        var compilations = await Task.WhenAll(projects.Select(async x => await x.GetCompilationAsync()));
+        
+        
+        await using Stream stream = new FileStream(writeTo, FileMode.OpenOrCreate);
+
+        var serial = Newtonsoft.Json.JsonSerializer.Create();
+        using var streamWriter = new StreamWriter(stream);
+        using var writer = new JsonTextWriter(streamWriter);
+        writer.Formatting = Formatting.None;
+
+        int total = compilations.Sum(x => x.SyntaxTrees.Count());
+        int count = 0;
+
+        await writer.WriteStartArrayAsync();
+        {
+            foreach (var com in compilations)
+            {
+                foreach (var tree in com.SyntaxTrees)
+                {
+                    var methods = tree.GetAllMethods();
+                    var model = com.GetSemanticModel(tree);
+                    for (int i = 0; i < methods.Count; i++)
+                    {
+                        var x = methods[i];
+                        var com1 = com;
+                        var m = CalculateMetricsForMethod(x, model, solution, (y) => com1.GetSemanticModel(y));
+
+                        serial.Serialize(writer, m);
+                    }
+
+                    count++;
+                    Console.WriteLine("Done processing {0}/{1} syntax trees", count, total);
+                }
+            }
+        }
+        await writer.WriteEndArrayAsync();
+    }
+    
     private MethodWithMetrics CalculateMetricsForMethod(SyntaxNode method, SemanticModel model, Solution solution, Func<SyntaxTree, SemanticModel> getModel)
     {
         var classNode = method.GetClass();
         var methodsSymbol = method.GetMethodSymbol(model)!;
 
         var report = _purityAnalyser.ExtractReportsFromMethodAndDependencies(method, model, solution, getModel);
-        var scores = _purityCalculator.CalculateScores(report, _unknownMethod);
+        var scores = _purityCalculator.CalculateScores(report.Graph, _unknownMethod);
 
         
-        var result = new MethodWithMetrics(methodsSymbol!.Name, method.SyntaxTree.FilePath);
+        var result = new MethodWithMetrics(report.Main.FullName, report.Main.MethodType, method.SyntaxTree.FilePath, new Dictionary<Measure, int>());
         var linesOfSourceCode = SourceLinesOfCode.GetCount(method);
-        result.PurityScore = scores.FirstOrDefault(x => x.Report.Name == methodsSymbol.GetUniqueMethodName(method));
+        result.SetPurityScore(scores.FirstOrDefault(x => x.Report.Name == methodsSymbol.GetUniqueMethodName(method)));
 
         if (classNode != null)
         {
@@ -97,27 +141,24 @@ public class OptimizedMetricRunner
     }
 }
 
-public record MethodWithMetrics(string MethodName, string FilePath)
+public record MethodWithMetrics(string MethodName, MethodType MethodType, string FilePath, IDictionary<Measure, int> Metrics)
 {
     public List<ViolationWithDistance> Violations { get; set; }
     public int DependencyCount { get; set; }
     public int TotalLinesOfSourceCode { get; set; }
-
-    [JsonIgnore]
-    public PurityScore PurityScore
+    
+    [Newtonsoft.Json.JsonIgnore, System.Text.Json.Serialization.JsonIgnore]
+    public PurityScore PurityScore { get; set; }
+    
+    public void SetPurityScore(PurityScore score)
     {
-        get => _purityScore;
-        set
-        {
-            _purityScore = value;
-            Violations = _purityScore?.Violations;
-            DependencyCount = _purityScore?.DependencyCount ?? -1;
-            TotalLinesOfSourceCode = _purityScore?.LinesOfSourceCode ?? -1;
-        }
+        if(score == null) return;
+        
+        PurityScore = score;
+        Violations = score.Violations;
+        DependencyCount = score.DependencyCount;
+        TotalLinesOfSourceCode = score.LinesOfSourceCode;
     }
-
-    public readonly IDictionary<Measure, double> Metrics = new Dictionary<Measure, double>();
-    private PurityScore _purityScore;
 }
 
 public static class SolutionHelper
