@@ -19,7 +19,7 @@ public class Helper
 
     private static readonly SemaphoreSlim Semaphore = new SemaphoreSlim(1, Int32.MaxValue);
 
-    public static async Task<List<PurityReport>> GetReports(PurityAnalyser _sut)
+    public static async Task<List<PurityReport>> GetReports(PurityTool _sut)
     {
         await Semaphore.WaitAsync();
 

@@ -24,7 +24,7 @@ namespace PurityCodeQualityMetrics.Ui
     /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly PurityAnalyser _analyser;
+        private readonly PurityTool _analyser;
         private readonly PurityCalculator _calculator;
 
         private readonly ILoggerFactory _loggerFactory =
@@ -41,7 +41,7 @@ namespace PurityCodeQualityMetrics.Ui
 
         public MainWindow()
         {
-            _analyser = new PurityAnalyser(_loggerFactory.CreateLogger<PurityAnalyser>());
+            _analyser = new PurityTool(_loggerFactory.CreateLogger<PurityTool>());
             _calculator = new PurityCalculator(_loggerFactory.CreateLogger<PurityCalculator>());
             InitializeComponent();
             LoadUnknown();

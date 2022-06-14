@@ -13,7 +13,7 @@ namespace PurityCodeQualityMetrics.GitCrawler;
 public class LandkroonInterface
 {
     private ILogger _logger;
-    private PurityAnalyser _purityAnalyser;
+    private PurityTool _purityAnalyser;
     private PurityCalculator _purityCalculator;
     private Commit? currentCommitState;
     private IPurityReportRepo _purityReportRepo;
@@ -24,7 +24,7 @@ public class LandkroonInterface
     public static string OutputDir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "dev", "repos", "results");
 
-    public LandkroonInterface(ILogger logger, PurityAnalyser purityAnalyser, PurityCalculator purityCalculator)
+    public LandkroonInterface(ILogger logger, PurityTool purityAnalyser, PurityCalculator purityCalculator)
     {
         _logger = logger;
         _purityAnalyser = purityAnalyser;

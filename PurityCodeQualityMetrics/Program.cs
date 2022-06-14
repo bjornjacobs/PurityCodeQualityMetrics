@@ -8,7 +8,7 @@ using PurityCodeQualityMetrics.Purity.Storage;
 
 
 var logger = new OwnLogger();
-var analyzer = new PurityAnalyser(logger);
+var analyzer = new PurityTool(logger);
 var calculator = new PurityCalculator(logger);
 
 var _nonVolitilePurityRepo = new EfPurityRepo("standard_lib");

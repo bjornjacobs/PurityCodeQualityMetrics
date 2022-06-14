@@ -13,10 +13,10 @@ namespace PurityCodeQualityMetrics
     {
         private readonly string _solutionLocation;
         private readonly IPurityReportRepo _purityReportRepo;
-        private readonly PurityAnalyser _purityAnalyser;
+        private readonly PurityTool _purityAnalyser;
         private readonly PurityCalculator _purityCalculator;
 
-        public MetricRunner(string solutionLocation, IPurityReportRepo purityReportRepo, PurityAnalyser purityAnalyser, PurityCalculator purityCalculator)
+        public MetricRunner(string solutionLocation, IPurityReportRepo purityReportRepo, PurityTool purityAnalyser, PurityCalculator purityCalculator)
         {
             _solutionLocation = solutionLocation;
             _purityReportRepo = purityReportRepo;

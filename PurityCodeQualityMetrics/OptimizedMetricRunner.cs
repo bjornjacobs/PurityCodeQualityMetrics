@@ -16,14 +16,14 @@ namespace PurityCodeQualityMetrics;
 
 public class OptimizedMetricRunner
 {
-    private PurityAnalyser _purityAnalyser;
+    private PurityTool _purityTool;
     private PurityCalculator _purityCalculator;
     private Func<MethodDependency, PurityReport, PurityReport?> _unknownMethod;
 
 
-    public OptimizedMetricRunner(PurityAnalyser purityAnalyser, PurityCalculator purityCalculator, Func<MethodDependency, PurityReport, PurityReport?> unknownMethod)
+    public OptimizedMetricRunner(PurityTool purityTool, PurityCalculator purityCalculator, Func<MethodDependency, PurityReport, PurityReport?> unknownMethod)
     {
-        _purityAnalyser = purityAnalyser;
+        _purityTool = purityTool;
         _purityCalculator = purityCalculator;
         _unknownMethod = unknownMethod;
     }
@@ -93,7 +93,7 @@ public class OptimizedMetricRunner
         var classNode = method.GetClass();
         var methodsSymbol = method.GetMethodSymbol(model)!;
 
-        var report = _purityAnalyser.ExtractReportsFromMethodAndDependencies(method, model, solution, getModel);
+        var report = _purityTool.ExtractReportsFromMethodAndDependencies(method, model, solution, getModel);
         var scores = _purityCalculator.CalculateScores(report.Graph, _unknownMethod);
 
         

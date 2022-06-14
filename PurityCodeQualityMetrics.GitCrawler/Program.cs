@@ -22,7 +22,7 @@ if (!args.Any())
 var projectname = args.First();
 
 var factory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Error));
-var analyser = new PurityAnalyser(factory.CreateLogger<PurityAnalyser>());
+var analyser = new PurityTool(factory.CreateLogger<PurityTool>());
 var calculator = new PurityCalculator(factory.CreateLogger<PurityCalculator>());
 
 var l = new LandkroonInterface(new OwnLogger(), analyser, calculator);

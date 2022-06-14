@@ -15,7 +15,7 @@ namespace PurityCodeQualityMetrics.Tests.Purity;
 public class ViolationsPolicyTests
 {
     private static readonly Mock<ILogger> _logger = new Mock<ILogger>();
-    private readonly PurityAnalyser _sut = new(_logger.Object);
+    private readonly PurityTool _sut = new(_logger.Object);
 
     public static IEnumerable<object[]> Data => Assembly.GetExecutingAssembly().GetTypes()
         .SelectMany(t => t.GetMethods())

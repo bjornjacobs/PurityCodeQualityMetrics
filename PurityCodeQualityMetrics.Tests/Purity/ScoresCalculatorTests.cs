@@ -12,7 +12,7 @@ public class ScoresCalculatorTests
 {
     private static readonly Mock<ILogger> _logger = new Mock<ILogger>();
     
-    private readonly PurityAnalyser _purityAnalyser = new(_logger.Object);
+    private readonly PurityTool _purityAnalyser = new(_logger.Object);
     private readonly PurityCalculator _purityCalculator = new(_logger.Object);
 
     private CyclesTestClass _testClass = new();
