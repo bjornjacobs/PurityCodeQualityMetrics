@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using PurityCodeQualityMetrics.Purity.Violations;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -43,12 +44,20 @@ namespace PurityAnalyser
 
 
             var isPureMarked = methodSymbol.GetAttributes().Any(x => x.ToString() == "System.Diagnostics.Contracts.PureAttribute");
+            var policy = new IdentifierViolationPolicy();
 
 
             if (isPureMarked)
             {
+                var tree = methodSymbol.Locations[0].SourceTree;
+                var node = tree.GetRoot().DescendantNodes().OfType<MethodDeclarationSyntax>().First(x => x.Identifier.ValueText == methodSymbol.Name);
+                var model = context.Compilation.GetSemanticModel(tree);
+
+
+                var violations = policy.Check(node, tree, model);
+                
                 // For all such symbols, produce a diagnostic.
-                var diagnostic = Diagnostic.Create(Rule, methodSymbol.Locations[0], string.Join(",", methodSymbol.GetAttributes()));
+                var diagnostic = Diagnostic.Create(Rule, methodSymbol.Locations[0], string.Join(",", violations));
 
                 context.ReportDiagnostic(diagnostic);
             }

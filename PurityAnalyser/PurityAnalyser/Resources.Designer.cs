@@ -70,7 +70,7 @@ namespace PurityAnalyser {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to &apos;{0}&apos;.
+        ///   Looks up a localized string similar to Method is makred as [Pure} but contains the following purity violations &apos;{0}&apos;.
         /// </summary>
         internal static string AnalyzerMessageFormat {
             get {
