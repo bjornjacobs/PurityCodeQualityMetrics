@@ -60,7 +60,7 @@ def evaluate(pima):
 results = []
 for p in projects:
     results.append(p)
-    for i in range(4):
+    for i in range(5):
         # load dataset
         pima = pd.read_csv(
             f"regression/purity_metric/regression-{p}-{i}.csv", header=None, names=col_names, sep=';')
@@ -71,7 +71,7 @@ for p in projects:
         print(results)
 
 results.append('total')
-for i in range(4):
+for i in range(5):
     pima = pd.read_csv(
         f"regression/purity_metric/regression-{i}.csv", header=None, names=col_names, sep=';')
     stats = evaluate(pima)
@@ -82,10 +82,10 @@ for i in range(4):
     print(results)
 
 for x in range(len(projects) + 1):
-    for y in range(13):
-        if (y == 3 or y == 6 or y == 9 or y == 12):
-            print('\\textbf{', results[x * 13 + y], '}', end='&')
+    for y in range(16):
+        if (y == 3 or y == 6 or y == 9 or y == 12 or y == 15):
+            print('\\textbf{', results[x * 16 + y], '}', end='&')
         else:
-            print(results[x * 13 + y], ' & ',  end='')
+            print(results[x * 16 + y], ' & ',  end='')
 
     print("\\\\ \\hline")

@@ -36,7 +36,7 @@ public class LandkroonInterface
     {
         var repo = new Repository(project.RepoPath);
         Console.WriteLine($"Starting crawling {project.RepositoryName}. Resetting to branch {project.MainBranch}");
-       // repo.Reset(ResetMode.Hard, project.MainBranch);
+        repo.Reset(ResetMode.Hard, project.MainBranch);
         var commitsWithIssues = GetCommitsWIthIssues(repo, project);
 
         foreach (var commit in commitsWithIssues)

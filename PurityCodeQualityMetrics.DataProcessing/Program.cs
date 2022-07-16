@@ -8,10 +8,8 @@ using PurityCodeQualityMetrics.GitCrawler;
 using PurityCodeQualityMetrics.Purity;
 
 
+GenerateModelsCombintations();
 
-
-
-GenerateModels();
 
 
 void GenerateConstruct()
@@ -23,23 +21,26 @@ void GenerateConstruct()
         MethodType.Method,
     };
     Score.Mode = 2;
-    
-   // foreach (var project in TargetProject.GetTargetProjects())
-   for(int m = 0; m < 4; m++)
-   {
-       Score.Mode = m;
-        var p = ""; // project.RepositoryName;
+
+    foreach (var project in TargetProject.GetTargetProjects())
+    for (int m = 0; m < 4; m++)
+    {
+        Score.Mode = m;
+        var p = project.RepositoryName;
         for (int i = 0; i < 3; i++)
         {
             var mt = lst[i];
             var model = ModelType.Purity;
 
-            var data = Data.GetFinalData(p).Where(x => x.MethodType == mt).Select(x => Regression.Generate(x, false, model))
-                .Concat(Data.GetData(p).Where(x => x.Before != null).Select(x => x.Before).Where(x => x.MethodType == mt)
+            var data = Data.GetFinalData(p).Where(x => x.MethodType == mt)
+                .Select(x => Regression.Generate(x, false, model))
+                .Concat(Data.GetData(p).Where(x => x.Before != null).Select(x => x.Before)
+                    .Where(x => x.MethodType == mt)
                     .Select(x => Regression.Generate(x, true, model)))
                 .ToArray();
 
-            File.WriteAllLines(Path.Combine(Regression.Path,"constructs", $"regression-{m}-{mt}.csv"), Regression.ToLines(data));
+            File.WriteAllLines(Path.Combine(Regression.Path, "constructs", $"regression-{p}-{m}-{mt}.csv"),
+                Regression.ToLines(data));
         }
     }
 }
@@ -47,10 +48,10 @@ void GenerateConstruct()
 
 void GenerateMetrics()
 {
-    //foreach (var project in TargetProject.GetTargetProjects())
+    foreach (var project in TargetProject.GetTargetProjects())
     {
-        var p = ""; // project.RepositoryName;
-        for (int i = 0; i < 4; i++)
+        var p = project.RepositoryName;
+        for (int i = 0; i < 5; i++)
         {
             Score.Mode = i;
             var model = ModelType.Purity;
@@ -60,7 +61,41 @@ void GenerateMetrics()
                     .Select(x => Regression.Generate(x, true, model)))
                 .ToArray();
 
-            File.WriteAllLines(Path.Combine(Regression.Path,"purity_metric", $"regression-{i}.csv"), Regression.ToLines(data));
+            File.WriteAllLines(Path.Combine(Regression.Path, "purity_metric", $"regression-{p}-{i}.csv"),
+                Regression.ToLines(data));
+        }
+    }
+}
+
+
+void GenerateModelsCombintations()
+{
+    Score.Mode = 2;
+
+    var lst = new List<(ModelType, ModelType)>
+    {
+        (ModelType.BaselineOOP, ModelType.BaselineFP),
+        (ModelType.BaselineOOP, ModelType.Purity),
+        (ModelType.Purity, ModelType.BaselineFP),
+    };
+
+
+    foreach (var project in TargetProject.GetTargetProjects())
+   {
+       var p = project.RepositoryName;
+      //  for (int i = 0; i < lst.Count; i++)
+        {
+       //     var model = lst[i].Item1;
+      //      var model2 = lst[i].Item2;
+
+            var data = Data.GetFinalData(p).Select(x => Regression.Generate(x, false))
+                .Concat(Data.GetData(p).Where(x => x.Before != null).Select(x => x.Before)
+                    .Select(x => Regression.Generate(x, true)))
+                .ToArray();
+
+            File.WriteAllLines(
+                Path.Combine(Regression.Path, "combinations", $"regression-{p}-{ModelType.Purity.ToStr()}-{ModelType.BaselineFP.ToStr()}-{ModelType.BaselineOOP.ToStr()}.csv"),
+                Regression.ToLines(data));
         }
     }
 }
@@ -69,7 +104,7 @@ void GenerateMetrics()
 void GenerateModels()
 {
     Score.Mode = 2;
-    
+
     var lst = new List<ModelType>
     {
         ModelType.BaselineOOP,
@@ -77,10 +112,10 @@ void GenerateModels()
         ModelType.Purity,
     };
 
-    
-  //  foreach (var project in TargetProject.GetTargetProjects())
-  {
-      var p = ""; //project.RepositoryName;
+
+    //  foreach (var project in TargetProject.GetTargetProjects())
+    {
+        var p = ""; //project.RepositoryName;
         for (int i = 0; i < 3; i++)
         {
             var model = lst[i];
@@ -90,11 +125,11 @@ void GenerateModels()
                     .Select(x => Regression.Generate(x, true, model)))
                 .ToArray();
 
-            File.WriteAllLines(Path.Combine(Regression.Path, "models", $"regression-{model.ToStr()}.csv"), Regression.ToLines(data));
+            File.WriteAllLines(Path.Combine(Regression.Path, "models", $"regression-{model.ToStr()}.csv"),
+                Regression.ToLines(data));
         }
     }
 }
-
 
 
 //

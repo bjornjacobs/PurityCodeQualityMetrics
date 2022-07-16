@@ -33,19 +33,28 @@ public class Regression
     {
         return modelType switch
         {
-            ModelType.Purity or ModelType.PurityBest => GeneratePurity(m, isFaulty, optimize: modelType == ModelType.PurityBest),
+            ModelType.Purity => GeneratePurity(m, isFaulty),
             ModelType.BaselineFP => GenerateBaselineFp(m, isFaulty),
             ModelType.BaselineOOP => GenerateBaselineOOp(m, isFaulty),
             ModelType.Baseline => GenerateBaseline(m, isFaulty)
         };
     }
+    
+    public static double[] Generate(MethodWithMetrics m, bool isFaulty)
+    {
+        var one = Generate(m, isFaulty, ModelType.Purity);
+        var two = Generate(m, isFaulty, ModelType.BaselineFP);
+        var three = Generate(m, isFaulty, ModelType.BaselineOOP);
+
+        return one.Take(one.Length - 1).Concat(two.Take(two.Length - 1)).Concat(three).ToArray();
+    }
+
 
     private static int c = 0;
     static Random rnd = new Random();
-    public static double[] GeneratePurity(MethodWithMetrics method, bool isFaulty, bool optimize)
+    public static double[] GeneratePurity(MethodWithMetrics method, bool isFaulty)
     {
-        if (optimize)
-            Score.Mode = method.MethodType == MethodType.Method ? 2 : 1;
+        
         
         double[] data = new Double[7];
         data[0] = method.Purity(PurityViolation.ReadsLocalState);
@@ -91,7 +100,7 @@ public class Regression
     public static double[] GenerateCombined(MethodWithMetrics method, bool isFaulty)
     {
         var data = method.Metrics.Where(x => BaseLineMetrics.Contains(x.Key)).Select(x => (double)x.Value).ToList();
-        data.AddRange(GeneratePurity(method, isFaulty, false));
+        data.AddRange(GeneratePurity(method, isFaulty));
         return data.ToArray();
     }
 
@@ -107,7 +116,7 @@ public enum ModelType
     BaselineOOP,
     BaselineFP,
     Purity,
-    PurityBest,
+    PurityLite,
     Baseline,
 }
 
@@ -142,6 +151,7 @@ public static class Score
             case 1: return (m.Violations.Count(x => x.Violation == violation)) / (double)m.TotalLinesOfSourceCode ;
             case 2: return m.Violations.Where(x => x.Violation == violation).Select(x => 1 / (x.Distance + 1)).Sum();
             case 3: return m.Violations.Where(x => x.Violation == violation).Select(x => 1 / (x.Distance + 1)).Sum() / (double)m.TotalLinesOfSourceCode;
+            case 4: return m.Violations.Count(x => x.Distance == 0); //LITE
         }
 
         return -1;
