@@ -8,9 +8,7 @@ using PurityCodeQualityMetrics.GitCrawler;
 using PurityCodeQualityMetrics.Purity;
 
 
-GenerateModelsCombintations();
-
-
+GenerateConstruct();
 
 void GenerateConstruct()
 {
@@ -23,26 +21,26 @@ void GenerateConstruct()
     Score.Mode = 2;
 
     foreach (var project in TargetProject.GetTargetProjects())
-    for (int m = 0; m < 4; m++)
-    {
-        Score.Mode = m;
-        var p = project.RepositoryName;
-        for (int i = 0; i < 3; i++)
+        for (int m = 0; m < 4; m++)
         {
-            var mt = lst[i];
-            var model = ModelType.Purity;
+            Score.Mode = m;
+            var p = project.RepositoryName;
+            for (int i = 0; i < 3; i++)
+            {
+                var mt = lst[i];
+                var model = ModelType.Purity;
 
-            var data = Data.GetFinalData(p).Where(x => x.MethodType == mt)
-                .Select(x => Regression.Generate(x, false, model))
-                .Concat(Data.GetData(p).Where(x => x.Before != null).Select(x => x.Before)
-                    .Where(x => x.MethodType == mt)
-                    .Select(x => Regression.Generate(x, true, model)))
-                .ToArray();
+                var data = Data.GetFinalData(p).Where(x => x.MethodType == mt)
+                    .Select(x => Regression.Generate(x, false, model))
+                    .Concat(Data.GetData(p).Where(x => x.Before != null).Select(x => x.Before)
+                        .Where(x => x.MethodType == mt)
+                        .Select(x => Regression.Generate(x, true, model)))
+                    .ToArray();
 
-            File.WriteAllLines(Path.Combine(Regression.Path, "constructs", $"regression-{p}-{m}-{mt}.csv"),
-                Regression.ToLines(data));
+                File.WriteAllLines(Path.Combine(Regression.Path, "constructs", $"regression-{p}-{m}-{mt}.csv"),
+                    Regression.ToLines(data));
+            }
         }
-    }
 }
 
 
