@@ -1,5 +1,5 @@
 # Purity code quality metrics
-Master thesis project for software science master at the Radboud University. The full thesis can be found (here)[https://research.infosupport.com/wp-content/uploads/Master_thesis_bjorn_jacobs_1.6.1.pdf]. This repository contains the code and data.
+Master thesis project for software science master at the Radboud University. The full thesis can be found [here](https://research.infosupport.com/wp-content/uploads/Master_thesis_bjorn_jacobs_1.6.1.pdf). This repository contains the code and data.
 
 ## Abstract 
 In software engineering, there is a focus on creating quality code. However, what ex-
